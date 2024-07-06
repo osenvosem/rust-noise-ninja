@@ -1,7 +1,10 @@
 use crate::shared::Operation;
 use leptos::*;
-use leptos_heroicons::size_24::outline::{PauseCircle, PlayCircle};
-use web_sys::HtmlInputElement;
+use leptos_heroicons::size_24::outline::{
+    ArrowsRightLeft, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
+};
+use leptos_use::on_click_outside;
+use web_sys::{HtmlInputElement, SvgElement};
 
 #[component]
 pub fn ControlPanel(
@@ -13,6 +16,8 @@ pub fn ControlPanel(
     #[prop(into)] grid_size_handler: Callback<Operation>,
     volume: ReadSignal<f32>,
     set_volume: WriteSignal<f32>,
+    random_playback: ReadSignal<bool>,
+    set_random_playback: WriteSignal<bool>,
 ) -> impl IntoView {
     let main_container_class =
         "fixed bottom-[2%] left-[2%] right-[2%] h-[56px] bg-white/80 drop-shadow-md rounded-lg flex backdrop-blur-md";
@@ -30,6 +35,7 @@ pub fn ControlPanel(
                 <PlayButton play set_play/>
             </div>
             <div class=right_container_class>
+                <RandomPlaybackButton random_playback set_random_playback/>
                 <VolumeControl volume set_volume/>
             </div>
         </div>
@@ -39,7 +45,7 @@ pub fn ControlPanel(
 #[component]
 pub fn PlayButton(play: ReadSignal<bool>, set_play: WriteSignal<bool>) -> impl IntoView {
     let button_class = "w-12 h-12 rounded-full";
-    let icon_class = "stroke-slate-600 stroke-1";
+    let icon_class = "stroke-slate-950 stroke-1";
 
     view! {
         <button
@@ -67,27 +73,42 @@ pub fn PlayButton(play: ReadSignal<bool>, set_play: WriteSignal<bool>) -> impl I
 
 #[component]
 pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> impl IntoView {
-    let container_class = "flex flex-col";
-    let label_class = "block mb-2 text-xs font-medium text-slate-600 dark:text-white select-none";
-    let input_class = "block w-32 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer";
+    let container_class = "relative flex flex-col w-6 h-6";
+    let input_class = "block w-32 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer";
+    let input_container =
+        "absolute top-[-120px] left-[-68px] bg-white shadow rounded-full p-4 -rotate-90";
+    let icon_class = "cursor-pointer stroke-slate-950";
+    let (open, set_open) = create_signal(false);
+    let input_container_ref = create_node_ref();
+    let _ = on_click_outside(input_container_ref, move |e| {
+        let target = event_target::<SvgElement>(&e);
+        let tag = target.tag_name();
+        let tags = ["svg", "path"];
+        if open.get() && !tags.contains(&tag.as_str()) {
+            set_open.set(false);
+        }
+    });
 
     view! {
         <div class=container_class>
-            <label for="volume-range" class=label_class>
-                "Volume"
-            </label>
-            <input
-                id="volume-range"
-                type="range"
-                value=move || { volume.get() * 100.0 }
-                min=0
-                max=100
-                class=input_class
-                on:change=move |e| {
-                    set_volume.set(event_target_value(&e).parse::<f32>().unwrap() / 100.0)
-                }
-            />
-
+            <div data-icon-container class="" on:click=move |_| set_open.update(|val| *val = !*val)>
+                <Show when=move || volume.get() != 0.0 fallback=move || { view! {<SpeakerXMark class=icon_class/>} }>
+                    <SpeakerWave class=icon_class/>
+                </Show>
+            </div>
+            <div _ref=input_container_ref class=move || format!("{input_container}{}", if open.get() {""} else {" hidden"})>
+                <input
+                    id="volume-range"
+                    type="range"
+                    value=move || { volume.get() * 100.0 }
+                    min=0
+                    max=100
+                    class=input_class
+                    on:change=move |e| {
+                        set_volume.set(event_target_value(&e).parse::<f32>().unwrap() / 100.0)
+                    }
+                />
+            </div>
         </div>
     }
 }
@@ -127,7 +148,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
         <div class=container_class>
             <label
                 for="speed-input"
-                class="block mb-1 text-xs font-medium text-slate-600 select-none"
+                class="block mb-1 text-xs font-medium text-slate-950 select-none"
             >
                 "Speed (sec)"
             </label>
@@ -142,7 +163,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
                     disabled=move || { duration.get() == 0 }
                 >
                     <svg
-                        class="w-2.5 h-2.5 text-slate-600 pointer-events-none"
+                        class="w-2.5 h-2.5 text-slate-950 pointer-events-none"
                         aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
@@ -161,7 +182,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
                     type="text"
                     id="speed-input"
                     data-input-counter
-                    class="flex-shrink-0 text-slate-600border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder=""
                     prop:value=move || { duration.get() as f64 / 1000_f64 }
                     on:input=input_handler
@@ -175,7 +196,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
                     class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
                 >
                     <svg
-                        class="w-2.5 h-2.5 text-slate-600 pointer-events-none"
+                        class="w-2.5 h-2.5 text-slate-950 pointer-events-none"
                         aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
@@ -204,7 +225,7 @@ pub fn GridSizeControl(
         <div class="flex flex-col ml-6">
             <label
                 for="rows-input"
-                class="block mb-1 text-xs font-medium text-slate-600 select-none"
+                class="block mb-1 text-xs font-medium text-slate-950 select-none"
             >
                 "Rows"
             </label>
@@ -226,7 +247,7 @@ pub fn GridSizeControl(
                     disabled=move || { grid_rows_num.get() == 0 }
                 >
                     <svg
-                        class="w-2.5 h-2.5 text-slate-600 pointer-events-none"
+                        class="w-2.5 h-2.5 text-slate-950 pointer-events-none"
                         aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
@@ -245,7 +266,7 @@ pub fn GridSizeControl(
                     type="text"
                     id="rows-input"
                     data-input-counter
-                    class="flex-shrink-0 text-slate-600border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center select-none"
+                    class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center select-none"
                     placeholder=""
                     prop:value=grid_rows_num
                     disabled=true
@@ -262,7 +283,7 @@ pub fn GridSizeControl(
                     class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
                 >
                     <svg
-                        class="w-2.5 h-2.5 text-slate-600 pointer-events-none"
+                        class="w-2.5 h-2.5 text-slate-950 pointer-events-none"
                         aria-hidden="true"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
@@ -278,6 +299,22 @@ pub fn GridSizeControl(
                     </svg>
                 </button>
             </div>
+        </div>
+    }
+}
+
+#[component]
+fn RandomPlaybackButton(
+    random_playback: ReadSignal<bool>,
+    set_random_playback: WriteSignal<bool>,
+) -> impl IntoView {
+    view! {
+        <div class="w-6 h-6 flex mr-4 cursor-pointer"
+            on:click=move |_| { set_random_playback.update(|val| *val = !*val)}
+        >
+            <ArrowsRightLeft
+                class=move || format!("cursor-pointer{}", if random_playback.get() {" stroke-blue-500"} else {" stroke-slate-950"})
+            />
         </div>
     }
 }

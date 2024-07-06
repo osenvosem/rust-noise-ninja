@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::shared::{get_category_emoji, Category, Sample};
+use crate::shared::{format_filename, get_category_emoji, Category, Sample};
 use ev::MouseEvent;
 use html::Audio;
 use leptos::*;
@@ -18,6 +18,7 @@ pub fn SoundLibrary(
     #[prop(into)] clear_cell_handler: Callback<MouseEvent>,
     volume: ReadSignal<f32>,
 ) -> impl IntoView {
+    let local_sound_lib = sound_lib.clone();
     let container_class =
         "absolute top-0 right-0 bottom-auto left-0 min-h-screen w-screen bg-white ";
     let audio_ref = create_node_ref::<Audio>();
@@ -53,19 +54,20 @@ pub fn SoundLibrary(
         }
 
         let target_elem = event_target::<HtmlDivElement>(&e);
-        if let Some(sample_path) = target_elem.get_attribute("data-sample-filepath") {
-            sample_select_handler(Sample {
-                id: String::new(),
-                filepath: sample_path,
-                category: get_category_by_str(&target_elem.get_attribute("data-category").unwrap()),
-                filename: target_elem.get_attribute("data-filename").unwrap(),
-                duration: 0.0,
-            });
-        }
+        let sample_id = target_elem.get_attribute("data-sample-id").unwrap();
+        let category_str = target_elem.get_attribute("data-category").unwrap();
+        let category = get_category_by_str(category_str.as_str());
+
+        let category_vec = local_sound_lib.get(&category).unwrap();
+
+        let sample = category_vec
+            .iter()
+            .find(|&sample| sample.id == sample_id)
+            .unwrap();
+        sample_select_handler(sample.clone());
     };
 
     let render_view = sound_lib.into_iter().map(|(category, samples)| {
-            // logging::log!("{:?}", samples);
             view! {
                 <div class="mb-4">
                     <h2 class="select-none cursor-default mb-1">
@@ -77,20 +79,16 @@ pub fn SoundLibrary(
                             view! {
                                 <div class="flex flex-col align-center justify-start mr-2">
                                     <div
-                                        class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none cursor-pointer hover:border-slate-600 font-bold mb-2"
-                                        data-sample-filepath=&sample.filepath
+                                        class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none cursor-pointer hover:border-slate-950 font-bold mb-2"
+                                        data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
                                         data-category=category.to_string()
-                                        data-filename=&sample.filename
                                         on:click=sample_click_handler.clone()
                                     >
                                         <SpeakerWave class="w-10 h-10 top-2 right-2 bottom-2 left-2 stroke-slate-400 pointer-events-none"/>
                                     </div>
-                                    <div class="w-16 text-xs text-slate-600 pointer-events-none text-center">
-                                        {
-                                                let sfn = sample.filename.clone();
-                                                let formatted_filename = format!("{}{}", (sfn[..1]).to_uppercase(), &sfn[1..]).replace("_", " ");
-                                                format!("{formatted_filename} ({:.2} sec)", sample.duration)
-                                        }
+                                    <div class="flex flex-col items-center text-xs text-slate-950 pointer-events-none text-center">
+                                        <div class="font-semibold">{format_filename(&sample.filename)}</div>
+                                        <div>{format!("{:.2}s", &sample.duration)}</div>
                                     </div>
                                 </div>
                             }
@@ -141,7 +139,7 @@ fn ControlPanel(
     let container = "fixed bottom-[4%] w-screen h-[56px]";
     let container_inner = "w-60 h-[100%] mx-auto flex items-center justify-center";
     let button_class =
-        "border-0 bg-white shadow-md border-slate-400 rounded-lg p-1 hover:border-2 w-20 h-12 mr-4 text:slate-600 text-sm";
+        "border-0 bg-white shadow-md border-slate-400 rounded-lg p-1 hover:border-2 w-20 h-12 mr-4 text:slate-950 text-sm";
 
     view! {
         <div class=container>

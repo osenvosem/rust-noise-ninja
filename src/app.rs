@@ -4,25 +4,26 @@ use crate::shared::{
     SOUND_LIB_PATH,
 };
 use html::Audio;
-use leptos::logging;
 use leptos::*;
 use leptos_dom::helpers::TimeoutHandle;
+use rand::{thread_rng, Rng};
 use std::time::Duration;
+use wasm_bindgen::closure::Closure;
 
 #[component]
 pub fn App() -> impl IntoView {
     let mut grid_data_initial = vec![None; usize::from(DEFAULT_GRID_SIZE * 6)];
-    let default_duration = 1000;
     fill_grid_initial(&mut grid_data_initial);
     let container_class = "";
 
     let (grid_data, set_grid_data) = create_signal::<Vec<Option<Sample>>>(grid_data_initial);
     let (play, set_play) = create_signal(false);
-    let (duration, set_duration) = create_signal(default_duration);
+    let (duration, set_duration) = create_signal(0);
     let (current_cell, set_current_cell) = create_signal(0);
     let (timeout_handler, set_timeout_handler) = create_signal::<Option<TimeoutHandle>>(None);
-    let (volume, set_volume) = create_signal::<f32>(0.9);
+    let (volume, set_volume) = create_signal::<f32>(1.0);
     let (edit_cell_idx, set_edit_cell_idx) = create_signal::<Option<u16>>(None);
+    let (random_playback, set_random_playback) = create_signal(false);
     let sound_lib = create_resource(|| {}, |_| async { generate_lib().await });
 
     let main_audio_elem_ref = create_node_ref::<Audio>();
@@ -47,7 +48,10 @@ pub fn App() -> impl IntoView {
         let handler = set_timeout_with_handle(
             move || {
                 set_current_cell.update(move |val| {
-                    *val = if *val == grid_data.get().len() - 1 {
+                    let len = grid_data.get().len();
+                    *val = if random_playback.get() {
+                        thread_rng().gen_range(0..len)
+                    } else if *val == len - 1 {
                         0
                     } else {
                         *val + 1
@@ -65,15 +69,28 @@ pub fn App() -> impl IntoView {
         let audio = main_audio_elem_ref
             .get()
             .expect("Failed to get ref to audio element");
+
         if play.get() {
             if let Some(sample_opt) = grid_data.get().get(current_cell.get()) {
                 if let Some(sample) = sample_opt {
                     audio.set_src(&sample.filepath);
 
-                    let _ = audio.play();
+                    if let Ok(promise) = audio.play() {
+                        let reject_handler = Closure::new(move |err| {
+                            logging::error!("{:?}", err);
+                        });
+                        let _ = promise.catch(&reject_handler);
+                        reject_handler.forget();
+                    }
                 } else {
                     audio.set_src(EMPTY_SOUND);
-                    let _ = audio.play();
+                    if let Ok(promise) = audio.play() {
+                        let reject_handler = Closure::new(move |err| {
+                            logging::error!("{:?}", err);
+                        });
+                        let _ = promise.catch(&reject_handler);
+                        reject_handler.forget();
+                    }
                 }
             } else {
                 set_current_cell(0);
@@ -122,7 +139,6 @@ pub fn App() -> impl IntoView {
         let mut mut_grid_data = grid_data.get();
         mut_grid_data[idx as usize] = None;
         set_grid_data.set(mut_grid_data);
-        logging::log!("{}", idx);
     };
 
     let is_cell_filled = Signal::derive(move || {
@@ -153,6 +169,8 @@ pub fn App() -> impl IntoView {
                 grid_size_handler
                 volume
                 set_volume
+                random_playback
+                set_random_playback
             />
             <Suspense fallback=move || view! { "" }>
                 <ErrorBoundary fallback=|_| {view! {<p>"Something went wrong"</p>}}>
@@ -183,11 +201,11 @@ pub fn App() -> impl IntoView {
 
 fn fill_grid_initial(grid_data_initial: &mut [Option<Sample>]) {
     let sample = Sample {
-        id: String::new(),
-        filepath: format!("{SOUND_LIB_PATH}boom/1.mp3"),
+        id: "boom_ball_1".to_string(),
+        filepath: format!("{SOUND_LIB_PATH}boom/ball_1.mp3"),
         category: Category::Boom,
-        filename: "".to_string(),
-        duration: 0.0,
+        filename: "ball_1".to_string(),
+        duration: 0.32567,
     };
 
     let mod_idx = [0, 2, 3, 12, 23, 34];

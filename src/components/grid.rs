@@ -1,4 +1,4 @@
-use crate::shared::{get_category_emoji, Sample};
+use crate::shared::{format_filename, get_category_emoji, Sample};
 use ev::MouseEvent;
 use leptos::*;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
@@ -12,9 +12,9 @@ pub fn Grid(
     #[prop(into)] open_library_handler: Callback<u16>,
 ) -> impl IntoView {
     let container_class = "p-6 grid grid-cols-6 gap-2 pb-20";
-    let item_class = "h-10 rounded shadow-sm flex justify-center items-center hover:cursor-pointer hover:border-2 hover:shadow-lg active:shadow-sm bg-white/80 backdrop-blur-md";
+    let item_class = "h-16 rounded shadow-sm flex justify-center items-center hover:cursor-pointer hover:border-2 hover:shadow-lg active:shadow-sm bg-white/80 backdrop-blur-md";
     let item_active_class = "border-2 border-amber-400";
-    let icon_class = "h-6 w-12 pointer-events-none select-none font-bold";
+    let content_class = "flex flex-col items-center pointer-events-none select-none text-xs";
 
     let UseTimeoutFnReturn {
         start,
@@ -80,14 +80,22 @@ pub fn Grid(
                             )
                         }
                     >
-
                         {if let Some(sample) = elem {
-                            let content = format!(
-                                "{}{}",
-                                get_category_emoji(sample.category),
-                                sample.filename,
+                            let icon = get_category_emoji(sample.category);
+                            let filename = format_filename(&sample.filename);
+                            let duration = format!(
+                                "{:.2}s",
+                                &sample.duration
                             );
-                            view! { <div class=icon_class>{content}</div> }.into_view()
+
+
+                            view! {
+                                <div class=content_class>
+                                    <div>{icon}</div>
+                                    <div class="font-semibold">{filename}</div>
+                                    <div>{duration}</div>
+                                </div>
+                            }.into_view()
                         } else {
                             view! { "" }.into_view()
                         }}

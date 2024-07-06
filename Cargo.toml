@@ -23,9 +23,12 @@ leptos_heroicons = { git = "https://github.com/bbstilson/leptos_heroicons.git", 
   "24-outline-play-circle",
   "24-outline-pause-circle",
   "24-outline-speaker-wave",
+  "24-outline-speaker-x-mark",
+  "24-outline-arrows-right-left",
 ] }
 regex = "1.10.5"
 leptos-use = "0.10.10"
+rand = "0.8"
 
 [workspace]
 members = ["src-tauri"]

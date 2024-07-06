@@ -109,3 +109,7 @@ pub async fn generate_lib() -> HashMap<Category, Vec<Sample>> {
 
     lib_hash
 }
+
+pub fn format_filename(filename: &str) -> String {
+    format!("{}{}", (filename[..1]).to_uppercase(), &filename[1..],).replace("_", " ")
+}
