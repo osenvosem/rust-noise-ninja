@@ -6,6 +6,7 @@ use html::Audio;
 use leptos::*;
 use leptos_heroicons::size_24::outline::SpeakerWave;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
+use wasm_bindgen::closure::Closure;
 use web_sys::HtmlDivElement;
 
 #[component]
@@ -36,7 +37,13 @@ pub fn SoundLibrary(
             let target_elem = event_target::<HtmlDivElement>(&e);
             if let Some(sample_path) = target_elem.get_attribute("data-sample-filepath") {
                 audio.set_src(&sample_path);
-                let _ = audio.play();
+                if let Ok(promise) = audio.play() {
+                    let reject_handler = Closure::new(move |err| {
+                        logging::error!("{:?}", err);
+                    });
+                    let _ = promise.catch(&reject_handler);
+                    reject_handler.forget();
+                }
             }
         },
         200.0,
@@ -82,6 +89,7 @@ pub fn SoundLibrary(
                                         class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none cursor-pointer hover:border-slate-950 font-bold mb-2"
                                         data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
                                         data-category=category.to_string()
+                                        data-sample-filepath=&sample.filepath
                                         on:click=sample_click_handler.clone()
                                     >
                                         <SpeakerWave class="w-10 h-10 top-2 right-2 bottom-2 left-2 stroke-slate-400 pointer-events-none"/>
