@@ -105,13 +105,22 @@ pub fn App() -> impl IntoView {
 
     let grid_cell_click_handler =
         Callback::new(move |(sound_url_opt, idx): (Option<String>, u16)| {
-            let audio = secondary_audio_elem_ref
-                .get()
-                .expect("Failed to get ref to secondary audio element");
+            if !play.get() {
+                if let Some(sound_url) = sound_url_opt {
+                    let audio = secondary_audio_elem_ref
+                        .get()
+                        .expect("Failed to get ref to secondary audio element");
 
-            if let Some(sound_url) = sound_url_opt {
-                audio.set_src(&sound_url);
-                let _ = audio.play();
+                    audio.set_src(&sound_url);
+
+                    if let Ok(promise) = audio.play() {
+                        let reject_handler = Closure::new(move |err| {
+                            logging::error!("{:?}", err);
+                        });
+                        let _ = promise.catch(&reject_handler);
+                        reject_handler.forget();
+                    }
+                }
             }
 
             set_current_cell.set(idx as usize);

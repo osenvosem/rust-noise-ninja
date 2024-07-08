@@ -43,7 +43,7 @@ pub fn Grid(
     );
 
     let local_click_handler = move |e: MouseEvent| {
-        if !is_pending.get() && !play.get() {
+        if !is_pending.get() {
             start(e);
         }
     };
