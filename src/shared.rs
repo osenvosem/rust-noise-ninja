@@ -16,7 +16,7 @@ pub enum Operation {
 pub const GRID_COLUMN_STEP: u16 = 6;
 pub const SOUND_LIB_PATH: &str = "/public/sounds/";
 
-#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum Category {
     Boom,
     Doors,

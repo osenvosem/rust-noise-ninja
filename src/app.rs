@@ -18,7 +18,7 @@ pub fn App() -> impl IntoView {
 
     let (grid_data, set_grid_data) = create_signal::<Vec<Option<Sample>>>(grid_data_initial);
     let (play, set_play) = create_signal(false);
-    let (duration, set_duration) = create_signal(0);
+    let (duration, set_duration) = create_signal(1000);
     let (current_cell, set_current_cell) = create_signal(0);
     let (timeout_handler, set_timeout_handler) = create_signal::<Option<TimeoutHandle>>(None);
     let (volume, set_volume) = create_signal::<f32>(1.0);
@@ -156,6 +156,7 @@ pub fn App() -> impl IntoView {
                 current_cell
                 click_handler=grid_cell_click_handler
                 open_library_handler
+                play
             />
             <ControlPanel
                 play
