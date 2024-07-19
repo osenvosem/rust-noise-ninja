@@ -1,4 +1,4 @@
-use crate::shared::Operation;
+use crate::shared::{Operation, GRID_ROWS_MAX, GRID_ROWS_MIN};
 use leptos::*;
 use leptos_heroicons::size_24::outline::{
     ArrowsRightLeft, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
@@ -10,8 +10,8 @@ use web_sys::{HtmlInputElement, SvgElement};
 pub fn ControlPanel(
     play: ReadSignal<bool>,
     set_play: WriteSignal<bool>,
-    duration: ReadSignal<u64>,
-    set_duration: WriteSignal<u64>,
+    gap_duration: ReadSignal<u64>,
+    set_gap_duration: WriteSignal<u64>,
     grid_rows_num: Signal<u16>,
     #[prop(into)] grid_size_handler: Callback<Operation>,
     volume: ReadSignal<f32>,
@@ -28,7 +28,7 @@ pub fn ControlPanel(
     view! {
         <div class=main_container_class>
             <div class=left_container_class>
-                <PlaybackSpeed duration set_duration/>
+                <PlaybackGapDuration gap_duration set_gap_duration/>
                 <GridSizeControl grid_rows_num grid_size_handler/>
             </div>
             <div class=center_container_class>
@@ -114,11 +114,14 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
 }
 
 #[component]
-pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) -> impl IntoView {
+pub fn PlaybackGapDuration(
+    gap_duration: ReadSignal<u64>,
+    set_gap_duration: WriteSignal<u64>,
+) -> impl IntoView {
     let container_class = "flex flex-col";
     let inc_dec_handler = move |op: Operation| {
         let step = 500;
-        set_duration.update(|v| {
+        set_gap_duration.update(|v| {
             *v = match op {
                 Operation::Inc => *v + step,
                 Operation::Dec => *v - step,
@@ -137,7 +140,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
             target.set_value(&replaced);
         } else if let Ok(parsed) = val.parse::<f64>() {
             let float_mult = parsed * 1000.0;
-            set_duration.set(float_mult as u64);
+            set_gap_duration.set(float_mult as u64);
         } else {
             val.pop();
             target.set_value(&val);
@@ -150,7 +153,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
                 for="speed-input"
                 class="block mb-1 text-xs font-medium text-slate-950 select-none"
             >
-                "Speed (sec)"
+                "Silent gap (sec)"
             </label>
             <div class="relative flex items-center">
                 <button
@@ -159,8 +162,8 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
                     id="decrement-button"
                     data-input-counter-decrement="counter-input"
                     class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
-                    style=("opacity", move || { if duration.get() == 0 { "0.6" } else { "1" } })
-                    disabled=move || { duration.get() == 0 }
+                    style=("opacity", move || { if gap_duration.get() == 0 { "0.6" } else { "1" } })
+                    disabled=move || { gap_duration.get() == 0 }
                 >
                     <svg
                         class="w-2.5 h-2.5 text-slate-950 pointer-events-none"
@@ -184,7 +187,7 @@ pub fn PlaybackSpeed(duration: ReadSignal<u64>, set_duration: WriteSignal<u64>) 
                     data-input-counter
                     class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder=""
-                    prop:value=move || { duration.get() as f64 / 1000_f64 }
+                    prop:value=move || { gap_duration.get() as f64 / 1000_f64 }
                     on:input=input_handler
                 />
 
@@ -241,7 +244,7 @@ pub fn GridSizeControl(
                     class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
                     style=(
                         "opacity",
-                        move || { if grid_rows_num.get() == 0 { "0.6" } else { "1" } },
+                        move || { if grid_rows_num.get() == GRID_ROWS_MIN { "0.6" } else { "1" } },
                     )
 
                     disabled=move || { grid_rows_num.get() == 0 }
@@ -281,6 +284,10 @@ pub fn GridSizeControl(
                     id="increment-button"
                     data-input-counter-increment="counter-input"
                     class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    style=(
+                        "opacity",
+                        move || { if grid_rows_num.get() == GRID_ROWS_MAX { "0.6" } else { "1" } },
+                    )
                 >
                     <svg
                         class="w-2.5 h-2.5 text-slate-950 pointer-events-none"

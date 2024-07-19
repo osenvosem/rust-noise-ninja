@@ -76,15 +76,15 @@ pub fn SoundLibrary(
 
     let render_view = sound_lib.into_iter().map(|(category, samples)| {
             view! {
-                <div class="mb-4">
-                    <h2 class="select-none cursor-default mb-1">
+                <div class="mb-2">
+                    <h2 class="select-none cursor-default mb-4">
                         {get_category_emoji(category)} {category.to_string().to_uppercase()}
                     </h2>
 
                     <div class="flex flex-wrap">{
                         samples.iter().map(|sample| {
                             view! {
-                                <div class="flex flex-col align-center justify-start mr-2">
+                                <div class="flex flex-col align-center justify-start mr-2 mb-4">
                                     <div
                                         class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none cursor-pointer hover:border-slate-950 font-bold mb-2"
                                         data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
@@ -114,8 +114,8 @@ pub fn SoundLibrary(
             }
         >
 
-            <h1 class="absolute top-2 left-2 text-sm">You are editing cell # {edit_cell_idx}</h1>
-            <div class="mt-12 mb-16 px-12" on:dblclick=sample_double_click_handler>
+            <h1 class="absolute top-2 left-2 text-sm">You are editing cell #{edit_cell_idx}</h1>
+            <div class="mt-12 mb-20 px-12" on:dblclick=sample_double_click_handler>
                 {render_view}
             </div>
             <ControlPanel
@@ -147,7 +147,7 @@ fn ControlPanel(
     let container = "fixed bottom-[4%] w-screen h-[56px]";
     let container_inner = "w-60 h-[100%] mx-auto flex items-center justify-center";
     let button_class =
-        "border-0 bg-white shadow-md border-slate-400 rounded-lg p-1 hover:border-2 w-20 h-12 mr-4 text:slate-950 text-sm";
+        "border-2 bg-white shadow-lg border-slate-200 rounded-lg p-1 hover:border-slate-600 hover:shadow-md w-20 h-12 mr-4 text:slate-950 text-sm";
 
     view! {
         <div class=container>

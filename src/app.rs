@@ -1,14 +1,11 @@
 use crate::components::{control_panel::ControlPanel, grid::Grid, sound_library::SoundLibrary};
 use crate::shared::{
     generate_lib, Category, Operation, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP,
-    SOUND_LIB_PATH,
+    GRID_ROWS_MAX, GRID_ROWS_MIN, SOUND_LIB_PATH,
 };
 use html::Audio;
 use leptos::*;
 use leptos_dom::helpers::TimeoutHandle;
-// use leptos_use::storage::{use_local_storage_with_options, UseStorageOptions};
-// use leptos_use::utils::FilterOptions;
-// use leptos_use::{storage::use_local_storage, use_debounce_fn};
 use rand::{thread_rng, Rng};
 use std::time::Duration;
 use wasm_bindgen::{closure::Closure, prelude::*};
@@ -27,14 +24,23 @@ extern "C" {
     async fn get(this: &Store, key: &str) -> JsValue;
 
     #[wasm_bindgen(method)]
+    async fn delete(this: &Store, key: &str) -> JsValue;
+
+    #[wasm_bindgen(method)]
     async fn save(this: &Store);
+
+    #[wasm_bindgen(method)]
+    async fn clear(this: &Store);
+
+    #[wasm_bindgen(method)]
+    async fn keys(this: &Store) -> JsValue;
 }
 
 #[component]
 pub fn App() -> impl IntoView {
     let (grid_data, set_grid_data) = create_signal::<Vec<Option<Sample>>>(Vec::new());
     let (play, set_play) = create_signal(false);
-    let (duration, set_duration) = create_signal(1000);
+    let (gap_duration, set_gap_duration) = create_signal(1000);
     let (current_cell, set_current_cell) = create_signal(0);
     let (timeout_handler, set_timeout_handler) = create_signal::<Option<TimeoutHandle>>(None);
     let (volume, set_volume) = create_signal::<f32>(1.0);
@@ -54,28 +60,33 @@ pub fn App() -> impl IntoView {
         let store = Store::new("foo.bin");
 
         wasm_bindgen_futures::spawn_local(async move {
-            let duration = serde_wasm_bindgen::from_value::<String>(store.get("duration").await)
-                .unwrap()
-                .parse::<u64>()
-                .unwrap();
-            set_duration.set(duration);
+            // store.clear().await;
+            if let Ok(gap_duration_js_val) =
+                serde_wasm_bindgen::from_value::<String>(store.get("duration").await)
+            {
+                if let Ok(gap_duration) = gap_duration_js_val.parse::<u64>() {
+                    set_gap_duration.set(gap_duration);
+                }
+            }
 
-            let random_playback =
-                serde_wasm_bindgen::from_value::<String>(store.get("random_playback").await)
-                    .map(|val| match val.as_str() {
-                        "true" => true,
-                        "false" => false,
-                        _ => false,
-                    })
-                    .unwrap();
-            set_random_playback.set(random_playback);
+            if let Ok(random_playback) = serde_wasm_bindgen::from_value::<String>(
+                store.get("random_playback").await,
+            )
+            .map(|val| match val.as_str() {
+                "true" => true,
+                "false" => false,
+                _ => false,
+            }) {
+                set_random_playback.set(random_playback);
+            }
 
-            let volume = serde_wasm_bindgen::from_value::<String>(store.get("volume").await)
-                .unwrap()
-                .parse::<f32>()
-                .unwrap();
-
-            set_volume.set(volume);
+            if let Ok(volume_js_val) =
+                serde_wasm_bindgen::from_value::<String>(store.get("volume").await)
+            {
+                if let Ok(volume) = volume_js_val.parse::<f32>() {
+                    set_volume.set(volume);
+                }
+            }
 
             if let Ok(js_val_string) =
                 serde_wasm_bindgen::from_value::<String>(store.get("grid_data").await)
@@ -98,7 +109,7 @@ pub fn App() -> impl IntoView {
         if save_blocked.get() {
             return;
         };
-        let l_duration = duration.get().to_string();
+        let l_duration = gap_duration.get().to_string();
         let l_volume = volume.get().to_string();
         let l_random = random_playback.get().to_string();
         let l_grid_data = serde_json::to_value(grid_data.get()).unwrap();
@@ -119,6 +130,14 @@ pub fn App() -> impl IntoView {
     let grid_size_handler = move |op: Operation| {
         let mut gd = grid_data.get();
         let len = gd.len();
+
+        // Don't do anything if restriction boundaries reached
+        if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * GRID_COLUMN_STEP
+            || op == Operation::Inc && len as u16 == GRID_COLUMN_STEP * GRID_ROWS_MAX
+        {
+            return;
+        }
+
         set_grid_data.set(match op {
             Operation::Dec => {
                 gd.drain(len - GRID_COLUMN_STEP as usize..);
@@ -137,7 +156,18 @@ pub fn App() -> impl IntoView {
                 set_current_cell.update(move |val| {
                     let len = grid_data.get().len();
                     *val = if random_playback.get() {
-                        thread_rng().gen_range(0..len)
+                        // Exclude possibility of duplicating random index
+                        let current = thread_rng().gen_range(0..len);
+                        if *val != current {
+                            current
+                        } else {
+                            let middle = len / 2;
+                            if *val > middle {
+                                thread_rng().gen_range(0..(*val - 1))
+                            } else {
+                                thread_rng().gen_range((*val + 1)..len)
+                            }
+                        }
                     } else if *val == len - 1 {
                         0
                     } else {
@@ -145,7 +175,7 @@ pub fn App() -> impl IntoView {
                     }
                 })
             },
-            Duration::from_millis(duration.get()),
+            Duration::from_millis(gap_duration.get()),
         )
         .ok();
 
@@ -257,8 +287,8 @@ pub fn App() -> impl IntoView {
             <ControlPanel
                 play
                 set_play
-                duration
-                set_duration
+                gap_duration
+                set_gap_duration
                 grid_rows_num=Signal::derive(move || {
                     grid_data.get().len() as u16 / DEFAULT_GRID_SIZE
                 })
@@ -298,10 +328,10 @@ pub fn App() -> impl IntoView {
 
 fn fill_grid_initial(grid_data_initial: &mut [Option<Sample>]) {
     let sample = Sample {
-        id: "boom_ball_1".to_string(),
-        filepath: format!("{SOUND_LIB_PATH}boom/ball_1.mp3"),
+        id: "boom_hit_1".to_string(),
+        filepath: format!("{SOUND_LIB_PATH}boom/hit_1.mp3"),
         category: Category::Boom,
-        filename: "ball_1".to_string(),
+        filename: "hit_1".to_string(),
         duration: 0.32567,
     };
 
