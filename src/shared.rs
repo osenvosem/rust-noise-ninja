@@ -100,7 +100,7 @@ pub async fn generate_lib() -> HashMap<Category, Vec<Sample>> {
             id: format!("{category}_{filename}"),
             filename: filename.to_string(),
             filepath: format!("{SOUND_LIB_PATH}{category}/{filename}.mp3"),
-            category: category.clone(),
+            category,
             duration: durations_vec[idx],
         };
 
@@ -112,4 +112,12 @@ pub async fn generate_lib() -> HashMap<Category, Vec<Sample>> {
 
 pub fn format_filename(filename: &str) -> String {
     format!("{}{}", (filename[..1]).to_uppercase(), &filename[1..],).replace("_", " ")
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Preset {
+    volume: f32,
+    duration: u64,
+    random: bool,
+    grid_data: Vec<Option<Sample>>,
 }

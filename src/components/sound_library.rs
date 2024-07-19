@@ -78,7 +78,7 @@ pub fn SoundLibrary(
             view! {
                 <div class="mb-4">
                     <h2 class="select-none cursor-default mb-1">
-                        {get_category_emoji(category.clone())} {category.to_string().to_uppercase()}
+                        {get_category_emoji(category)} {category.to_string().to_uppercase()}
                     </h2>
 
                     <div class="flex flex-wrap">{

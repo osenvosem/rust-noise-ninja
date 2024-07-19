@@ -6,17 +6,33 @@ use crate::shared::{
 use html::Audio;
 use leptos::*;
 use leptos_dom::helpers::TimeoutHandle;
+// use leptos_use::storage::{use_local_storage_with_options, UseStorageOptions};
+// use leptos_use::utils::FilterOptions;
+// use leptos_use::{storage::use_local_storage, use_debounce_fn};
 use rand::{thread_rng, Rng};
 use std::time::Duration;
-use wasm_bindgen::closure::Closure;
+use wasm_bindgen::{closure::Closure, prelude::*};
+
+#[wasm_bindgen]
+extern "C" {
+    type Store;
+
+    #[wasm_bindgen(constructor, js_namespace = __TAURI_PLUGIN_STORE__)]
+    fn new(filename: &str) -> Store;
+
+    #[wasm_bindgen(method)]
+    async fn set(this: &Store, key: &str, value: &str) -> JsValue;
+
+    #[wasm_bindgen(method)]
+    async fn get(this: &Store, key: &str) -> JsValue;
+
+    #[wasm_bindgen(method)]
+    async fn save(this: &Store);
+}
 
 #[component]
 pub fn App() -> impl IntoView {
-    let mut grid_data_initial = vec![None; usize::from(DEFAULT_GRID_SIZE * 6)];
-    fill_grid_initial(&mut grid_data_initial);
-    let container_class = "";
-
-    let (grid_data, set_grid_data) = create_signal::<Vec<Option<Sample>>>(grid_data_initial);
+    let (grid_data, set_grid_data) = create_signal::<Vec<Option<Sample>>>(Vec::new());
     let (play, set_play) = create_signal(false);
     let (duration, set_duration) = create_signal(1000);
     let (current_cell, set_current_cell) = create_signal(0);
@@ -24,10 +40,81 @@ pub fn App() -> impl IntoView {
     let (volume, set_volume) = create_signal::<f32>(1.0);
     let (edit_cell_idx, set_edit_cell_idx) = create_signal::<Option<u16>>(None);
     let (random_playback, set_random_playback) = create_signal(false);
+    let (save_blocked, set_save_blocked) = create_signal(false);
+
     let sound_lib = create_resource(|| {}, |_| async { generate_lib().await });
 
     let main_audio_elem_ref = create_node_ref::<Audio>();
     let secondary_audio_elem_ref = create_node_ref::<Audio>();
+
+    // Restore state
+    create_effect(move |_| {
+        set_save_blocked.set(true);
+
+        let store = Store::new("foo.bin");
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let duration = serde_wasm_bindgen::from_value::<String>(store.get("duration").await)
+                .unwrap()
+                .parse::<u64>()
+                .unwrap();
+            set_duration.set(duration);
+
+            let random_playback =
+                serde_wasm_bindgen::from_value::<String>(store.get("random_playback").await)
+                    .map(|val| match val.as_str() {
+                        "true" => true,
+                        "false" => false,
+                        _ => false,
+                    })
+                    .unwrap();
+            set_random_playback.set(random_playback);
+
+            let volume = serde_wasm_bindgen::from_value::<String>(store.get("volume").await)
+                .unwrap()
+                .parse::<f32>()
+                .unwrap();
+
+            set_volume.set(volume);
+
+            if let Ok(js_val_string) =
+                serde_wasm_bindgen::from_value::<String>(store.get("grid_data").await)
+            {
+                let grid_data = serde_json::from_str::<Vec<Option<Sample>>>(js_val_string.as_str());
+
+                set_grid_data.set(grid_data.unwrap());
+            } else {
+                let mut grid_data_initial = vec![None; usize::from(DEFAULT_GRID_SIZE * 6)];
+                fill_grid_initial(&mut grid_data_initial);
+                set_grid_data.set(grid_data_initial);
+            }
+
+            set_save_blocked.set(false);
+        });
+    });
+
+    // Save state
+    create_effect(move |_| {
+        if save_blocked.get() {
+            return;
+        };
+        let l_duration = duration.get().to_string();
+        let l_volume = volume.get().to_string();
+        let l_random = random_playback.get().to_string();
+        let l_grid_data = serde_json::to_value(grid_data.get()).unwrap();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let store = Store::new("foo.bin");
+
+            store.set("duration", l_duration.as_str()).await;
+            store.set("volume", l_volume.as_str()).await;
+            store.set("random_playback", l_random.as_str()).await;
+            store
+                .set("grid_data", l_grid_data.to_string().as_str())
+                .await;
+            store.save().await;
+        });
+    });
 
     let grid_size_handler = move |op: Operation| {
         let mut gd = grid_data.get();
@@ -159,7 +246,7 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
-        <div class=container_class>
+        <div>
             <Grid
                 grid_data
                 current_cell
