@@ -1,4 +1,4 @@
-use crate::shared::{format_filename, get_category_emoji, Sample};
+use crate::shared::{format_filename, Sample};
 use ev::MouseEvent;
 use leptos::*;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
@@ -82,7 +82,7 @@ pub fn Grid(
                         }
                     >
                         {if let Some(sample) = elem {
-                            let icon = get_category_emoji(sample.category);
+                            let icon = sample.category.get_emoji();
                             let filename = format_filename(&sample.filename);
                             let duration = format!(
                                 "{:.2}s",

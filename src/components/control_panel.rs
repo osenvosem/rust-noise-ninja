@@ -19,24 +19,28 @@ pub fn ControlPanel(
     random_playback: ReadSignal<bool>,
     set_random_playback: WriteSignal<bool>,
 ) -> impl IntoView {
-    let main_container_class =
-        "fixed bottom-[2%] left-[2%] right-[2%] h-[56px] bg-white/80 drop-shadow-md rounded-lg flex backdrop-blur-md";
+    let outer_container_class = "fixed bottom-[2%] left-[2%] right-[2%]";
+    let inner_container_class =
+        "fixed bottom-[2%] left-[2%] right-[2%] flex h-[56px] bg-white/80 drop-shadow-md rounded-lg backdrop-blur-md";
     let left_container_class = "flex flex-1 items-center justify-start pl-[2%]";
     let center_container_class = "flex flex-1 items-center justify-center";
     let right_container_class = "flex flex-1 items-center justify-end pr-[2%]";
 
     view! {
-        <div class=main_container_class>
-            <div class=left_container_class>
-                <PlaybackGapDuration gap_duration set_gap_duration/>
-                <GridSizeControl grid_rows_num grid_size_handler/>
-            </div>
-            <div class=center_container_class>
-                <PlayButton play set_play/>
-            </div>
-            <div class=right_container_class>
-                <RandomPlaybackButton random_playback set_random_playback/>
-                <VolumeControl volume set_volume/>
+        // the wrapper fixes control panel jumping when openning volume control
+        <div class=outer_container_class>
+            <div class=inner_container_class>
+                <div class=left_container_class>
+                    <PlaybackGapDuration gap_duration set_gap_duration/>
+                    <GridSizeControl grid_rows_num grid_size_handler/>
+                </div>
+                <div class=center_container_class>
+                    <PlayButton play set_play/>
+                </div>
+                <div class=right_container_class>
+                    <RandomPlaybackButton random_playback set_random_playback/>
+                    <VolumeControl volume set_volume/>
+                </div>
             </div>
         </div>
     }
@@ -74,12 +78,15 @@ pub fn PlayButton(play: ReadSignal<bool>, set_play: WriteSignal<bool>) -> impl I
 #[component]
 pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> impl IntoView {
     let container_class = "relative flex flex-col w-6 h-6";
-    let input_class = "block w-32 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer";
+    let icon_class = "cursor-pointer stroke-slate-950";
     let input_container =
         "absolute top-[-120px] left-[-68px] bg-white shadow rounded-full p-4 -rotate-90";
-    let icon_class = "cursor-pointer stroke-slate-950";
+    let input_class = "block w-32 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer";
+
     let (open, set_open) = create_signal(false);
+
     let input_container_ref = create_node_ref();
+
     let _ = on_click_outside(input_container_ref, move |e| {
         let target = event_target::<SvgElement>(&e);
         let tag = target.tag_name();
@@ -91,7 +98,7 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
 
     view! {
         <div class=container_class>
-            <div data-icon-container class="" on:click=move |_| set_open.update(|val| *val = !*val)>
+            <div data-icon-container on:click=move |_| set_open.update(|val| *val = !*val)>
                 <Show when=move || volume.get() != 0.0 fallback=move || { view! {<SpeakerXMark class=icon_class/>} }>
                     <SpeakerWave class=icon_class/>
                 </Show>

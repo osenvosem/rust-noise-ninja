@@ -1,14 +1,17 @@
 use crate::components::{control_panel::ControlPanel, grid::Grid, sound_library::SoundLibrary};
 use crate::shared::{
-    generate_lib, Category, Operation, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP,
-    GRID_ROWS_MAX, GRID_ROWS_MIN, SOUND_LIB_PATH,
+    Category, Operation, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP, GRID_ROWS_MAX,
+    GRID_ROWS_MIN, SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
 };
 use html::Audio;
 use leptos::*;
 use leptos_dom::helpers::TimeoutHandle;
 use rand::{thread_rng, Rng};
+use std::collections::HashMap;
 use std::time::Duration;
 use wasm_bindgen::{closure::Closure, prelude::*};
+use wasm_bindgen_futures::JsFuture;
+use web_sys::Response;
 
 #[wasm_bindgen]
 extern "C" {
@@ -48,7 +51,23 @@ pub fn App() -> impl IntoView {
     let (random_playback, set_random_playback) = create_signal(false);
     let (save_blocked, set_save_blocked) = create_signal(false);
 
-    let sound_lib = create_resource(|| {}, |_| async { generate_lib().await });
+    let sound_lib = create_resource(
+        || {},
+        |_| async {
+            let resp_val = JsFuture::from(
+                web_sys::window()
+                    .unwrap()
+                    .fetch_with_str(SOUND_LIB_JSON_PATH),
+            )
+            .await
+            .unwrap();
+
+            let resp: Response = resp_val.dyn_into().unwrap();
+            let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
+
+            serde_wasm_bindgen::from_value::<HashMap<Category, Vec<Sample>>>(json).unwrap()
+        },
+    );
 
     let main_audio_elem_ref = create_node_ref::<Audio>();
     let secondary_audio_elem_ref = create_node_ref::<Audio>();
@@ -131,7 +150,7 @@ pub fn App() -> impl IntoView {
         let mut gd = grid_data.get();
         let len = gd.len();
 
-        // Don't do anything if restriction boundaries reached
+        // Don't do anything if restriction boundaries are reached
         if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * GRID_COLUMN_STEP
             || op == Operation::Inc && len as u16 == GRID_COLUMN_STEP * GRID_ROWS_MAX
         {
@@ -183,16 +202,22 @@ pub fn App() -> impl IntoView {
     };
 
     create_effect(move |_| {
-        let audio = main_audio_elem_ref
+        let main_audio_elem = main_audio_elem_ref
             .get()
-            .expect("Failed to get ref to audio element");
+            .expect("Failed to get ref to main audio element");
+        let secondary_audio_elem = secondary_audio_elem_ref
+            .get()
+            .expect("Failed to get ref to secondary audio element");
 
         if play.get() {
+            let _ = secondary_audio_elem.pause();
+            secondary_audio_elem.set_current_time(0.0);
+
             if let Some(sample_opt) = grid_data.get().get(current_cell.get()) {
                 if let Some(sample) = sample_opt {
-                    audio.set_src(&sample.filepath);
+                    main_audio_elem.set_src(&sample.filepath);
 
-                    if let Ok(promise) = audio.play() {
+                    if let Ok(promise) = main_audio_elem.play() {
                         let reject_handler = Closure::new(move |err| {
                             logging::error!("{:?}", err);
                         });
@@ -200,8 +225,8 @@ pub fn App() -> impl IntoView {
                         reject_handler.forget();
                     }
                 } else {
-                    audio.set_src(EMPTY_SOUND);
-                    if let Ok(promise) = audio.play() {
+                    main_audio_elem.set_src(EMPTY_SOUND);
+                    if let Ok(promise) = main_audio_elem.play() {
                         let reject_handler = Closure::new(move |err| {
                             logging::error!("{:?}", err);
                         });
@@ -212,11 +237,13 @@ pub fn App() -> impl IntoView {
             } else {
                 set_current_cell(0);
             }
-        } else if let Some(timeout_handle) = timeout_handler.get() {
-            timeout_handle.clear();
-            set_timeout_handler.set(None);
-            let _ = audio.pause();
-            audio.set_current_time(0.0);
+        } else {
+            let _ = main_audio_elem.pause();
+            main_audio_elem.set_current_time(0.0);
+            if let Some(timeout_handle) = timeout_handler.get() {
+                timeout_handle.clear();
+                set_timeout_handler.set(None);
+            }
         }
     });
 

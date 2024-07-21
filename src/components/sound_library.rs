@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use crate::shared::{format_filename, get_category_emoji, Category, Sample};
+use crate::shared::{format_filename, Category, Sample};
 use ev::MouseEvent;
 use html::Audio;
 use leptos::*;
 use leptos_heroicons::size_24::outline::SpeakerWave;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
+use std::str::FromStr;
 use wasm_bindgen::closure::Closure;
 use web_sys::HtmlDivElement;
 
@@ -35,6 +36,7 @@ pub fn SoundLibrary(
                 .get()
                 .expect("Failed to get ref to lib audio element");
             let target_elem = event_target::<HtmlDivElement>(&e);
+
             if let Some(sample_path) = target_elem.get_attribute("data-sample-filepath") {
                 audio.set_src(&sample_path);
                 if let Ok(promise) = audio.play() {
@@ -63,7 +65,7 @@ pub fn SoundLibrary(
         let target_elem = event_target::<HtmlDivElement>(&e);
         let sample_id = target_elem.get_attribute("data-sample-id").unwrap();
         let category_str = target_elem.get_attribute("data-category").unwrap();
-        let category = get_category_by_str(category_str.as_str());
+        let category = Category::from_str(category_str.as_str()).unwrap();
 
         let category_vec = local_sound_lib.get(&category).unwrap();
 
@@ -74,29 +76,31 @@ pub fn SoundLibrary(
         sample_select_handler(sample.clone());
     };
 
-    let render_view = sound_lib.into_iter().map(|(category, samples)| {
+    let render_view = [Category::Boom, Category::Doors, Category::People, Category::Construction, Category::Eerie].map(|category| {
+            let samples = sound_lib.get(&category).unwrap();
             view! {
                 <div class="mb-2">
                     <h2 class="select-none cursor-default mb-4">
-                        {get_category_emoji(category)} {category.to_string().to_uppercase()}
+                        {category.get_emoji()} {category.to_string().to_uppercase()}
                     </h2>
 
                     <div class="flex flex-wrap">{
                         samples.iter().map(|sample| {
                             view! {
-                                <div class="flex flex-col align-center justify-start mr-2 mb-4">
+                                <div class="flex flex-col align-center justify-start mr-2 mb-4 cursor-pointer"
+                                    data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
+                                    data-category=category.to_string()
+                                    data-sample-filepath=&sample.filepath
+                                    on:click=sample_click_handler.clone()
+                                >
                                     <div
-                                        class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none cursor-pointer hover:border-slate-950 font-bold mb-2"
-                                        data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
-                                        data-category=category.to_string()
-                                        data-sample-filepath=&sample.filepath
-                                        on:click=sample_click_handler.clone()
+                                        class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none hover:border-slate-950 font-bold mb-2 pointer-events-none"
                                     >
                                         <SpeakerWave class="w-10 h-10 top-2 right-2 bottom-2 left-2 stroke-slate-400 pointer-events-none"/>
                                     </div>
-                                    <div class="flex flex-col items-center text-xs text-slate-950 pointer-events-none text-center">
-                                        <div class="font-semibold">{format_filename(&sample.filename)}</div>
-                                        <div>{format!("{:.2}s", &sample.duration)}</div>
+                                    <div class="flex flex-col items-center text-xs text-slate-950 text-center pointer-events-none">
+                                        <div class="font-semibold select-none pointer-events-none">{format_filename(&sample.filename)}</div>
+                                        <div class="select-none pointer-events-none">{format!("{:.2}s", &sample.duration)}</div>
                                     </div>
                                 </div>
                             }
@@ -125,16 +129,6 @@ pub fn SoundLibrary(
             />
             <audio _ref=audio_ref prop:volume=volume></audio>
         </div>
-    }
-}
-
-fn get_category_by_str(s: &str) -> Category {
-    match s {
-        "boom" => Category::Boom,
-        "doors" => Category::Doors,
-        "construction" => Category::Construction,
-        "eerie" => Category::Eerie,
-        _ => Category::Boom,
     }
 }
 
