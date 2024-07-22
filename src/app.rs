@@ -1,4 +1,6 @@
-use crate::components::{control_panel::ControlPanel, grid::Grid, sound_library::SoundLibrary};
+use crate::components::{
+    control_panel::ControlPanel, grid::Grid, presets::Presets, sound_library::SoundLibrary,
+};
 use crate::shared::{
     Category, Operation, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP, GRID_ROWS_MAX,
     GRID_ROWS_MIN, SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
@@ -50,6 +52,7 @@ pub fn App() -> impl IntoView {
     let (edit_cell_idx, set_edit_cell_idx) = create_signal::<Option<u16>>(None);
     let (random_playback, set_random_playback) = create_signal(false);
     let (save_blocked, set_save_blocked) = create_signal(false);
+    let (presets_visible, set_presets_visible) = create_signal(false);
 
     let sound_lib = create_resource(
         || {},
@@ -65,7 +68,15 @@ pub fn App() -> impl IntoView {
             let resp: Response = resp_val.dyn_into().unwrap();
             let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
 
-            serde_wasm_bindgen::from_value::<HashMap<Category, Vec<Sample>>>(json).unwrap()
+            // Sort vectors in the hashmap once
+            serde_wasm_bindgen::from_value::<HashMap<Category, Vec<Sample>>>(json)
+                .unwrap()
+                .iter_mut()
+                .map(|(c, v)| {
+                    v.sort();
+                    (*c, v.clone())
+                })
+                .collect()
         },
     );
 
@@ -325,6 +336,7 @@ pub fn App() -> impl IntoView {
                 set_volume
                 random_playback
                 set_random_playback
+                set_presets_visible
             />
             <Suspense fallback=move || view! { "" }>
                 <ErrorBoundary fallback=|_| {view! {<p>"Something went wrong"</p>}}>
@@ -347,6 +359,7 @@ pub fn App() -> impl IntoView {
                     }}
                 </ErrorBoundary>
             </Suspense>
+            <Presets presets_visible />
             <audio _ref=main_audio_elem_ref prop:volume=volume on:ended=ended_listener></audio>
             <audio _ref=secondary_audio_elem_ref prop:volume=volume></audio>
         </div>

@@ -13,6 +13,8 @@ pub enum Operation {
 pub const GRID_COLUMN_STEP: u16 = 6;
 pub const SOUND_LIB_PATH: &str = "/public/sounds/";
 pub const SOUND_LIB_JSON_PATH: &str = "/public/sounds/lib.json";
+pub const GRID_ROWS_MIN: u16 = 1;
+pub const GRID_ROWS_MAX: u16 = 20;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum Category {
@@ -45,6 +47,18 @@ impl Category {
             Category::Eerie => '👻',
         }
     }
+
+    pub fn iter() -> impl Iterator<Item = Category> {
+        [
+            Category::Boom,
+            Category::Doors,
+            Category::People,
+            Category::Construction,
+            Category::Eerie,
+        ]
+        .iter()
+        .copied()
+    }
 }
 
 impl FromStr for Category {
@@ -70,8 +84,28 @@ pub struct Sample {
     pub duration: f32,
 }
 
+impl Ord for Sample {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.filename.cmp(&other.filename)
+    }
+}
+
+impl PartialOrd for Sample {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.filename.cmp(&other.filename))
+    }
+}
+
+impl PartialEq for Sample {
+    fn eq(&self, other: &Self) -> bool {
+        self.filename == other.filename
+    }
+}
+
+impl Eq for Sample {}
+
 pub fn format_filename(filename: &str) -> String {
-    format!("{}{}", (filename[..1]).to_uppercase(), &filename[1..],).replace("_", " ")
+    format!("{}{}", filename[..1].to_uppercase(), &filename[1..],).replace("_", " ")
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,6 +115,3 @@ pub struct Preset {
     random: bool,
     grid_data: Vec<Option<Sample>>,
 }
-
-pub const GRID_ROWS_MIN: u16 = 1;
-pub const GRID_ROWS_MAX: u16 = 20;

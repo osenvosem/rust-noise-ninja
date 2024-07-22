@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use crate::shared::{format_filename, Category, Sample};
 use ev::MouseEvent;
 use html::Audio;
 use leptos::*;
 use leptos_heroicons::size_24::outline::SpeakerWave;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
+use std::collections::HashMap;
 use std::str::FromStr;
 use wasm_bindgen::closure::Closure;
 use web_sys::HtmlDivElement;
@@ -76,7 +75,7 @@ pub fn SoundLibrary(
         sample_select_handler(sample.clone());
     };
 
-    let render_view = [Category::Boom, Category::Doors, Category::People, Category::Construction, Category::Eerie].map(|category| {
+    let render_view = Category::iter().map(|category| {
             let samples = sound_lib.get(&category).unwrap();
             view! {
                 <div class="mb-2">
