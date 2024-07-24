@@ -37,13 +37,20 @@ pub fn SoundLibrary(
             let target_elem = event_target::<HtmlDivElement>(&e);
 
             if let Some(sample_path) = target_elem.get_attribute("data-sample-filepath") {
-                audio.set_src(&sample_path);
-                if let Ok(promise) = audio.play() {
-                    let reject_handler = Closure::new(move |err| {
-                        logging::error!("{:?}", err);
-                    });
-                    let _ = promise.catch(&reject_handler);
-                    reject_handler.forget();
+                let current_sample_path = audio.src();
+
+                if !audio.paused() && current_sample_path.contains(&sample_path) {
+                    let _ = audio.pause();
+                    audio.set_current_time(0.0);
+                } else {
+                    audio.set_src(&sample_path);
+                    if let Ok(promise) = audio.play() {
+                        let reject_handler = Closure::new(move |err| {
+                            logging::error!("{:?}", err);
+                        });
+                        let _ = promise.catch(&reject_handler);
+                        reject_handler.forget();
+                    }
                 }
             }
         },
@@ -65,6 +72,9 @@ pub fn SoundLibrary(
         let sample_id = target_elem.get_attribute("data-sample-id").unwrap();
         let category_str = target_elem.get_attribute("data-category").unwrap();
         let category = Category::from_str(category_str.as_str()).unwrap();
+        let audio = audio_ref
+            .get()
+            .expect("Failed to get ref to lib audio element");
 
         let category_vec = local_sound_lib.get(&category).unwrap();
 
@@ -73,6 +83,8 @@ pub fn SoundLibrary(
             .find(|&sample| sample.id == sample_id)
             .unwrap();
         sample_select_handler(sample.clone());
+        let _ = audio.pause();
+        audio.set_current_time(0.0);
     };
 
     let render_view = Category::iter().map(|category| {
@@ -86,7 +98,7 @@ pub fn SoundLibrary(
                     <div class="flex flex-wrap">{
                         samples.iter().map(|sample| {
                             view! {
-                                <div class="flex flex-col align-center justify-start mr-2 mb-4 cursor-pointer"
+                                <div class="flex flex-col align-center justify-start mr-4 mb-4 cursor-pointer"
                                     data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
                                     data-category=category.to_string()
                                     data-sample-filepath=&sample.filepath
@@ -140,7 +152,7 @@ fn ControlPanel(
     let container = "fixed bottom-[4%] w-screen h-[56px]";
     let container_inner = "w-60 h-[100%] mx-auto flex items-center justify-center";
     let button_class =
-        "border-2 bg-white shadow-lg border-slate-200 rounded-lg p-1 hover:border-slate-600 hover:shadow-md w-20 h-12 mr-4 text:slate-950 text-sm";
+        "border-2 bg-white shadow-lg border-slate-200 rounded-lg p-1 hover:border-slate-600 hover:shadow-md w-20 h-12 mr-4 text:slate-950 text-sm select-none";
 
     view! {
         <div class=container>

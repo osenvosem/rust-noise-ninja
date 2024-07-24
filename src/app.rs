@@ -68,7 +68,7 @@ pub fn App() -> impl IntoView {
             let resp: Response = resp_val.dyn_into().unwrap();
             let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
 
-            // Sort vectors in the hashmap once
+            // NOTE: Sort vectors in the hashmap once
             serde_wasm_bindgen::from_value::<HashMap<Category, Vec<Sample>>>(json)
                 .unwrap()
                 .iter_mut()
@@ -83,7 +83,7 @@ pub fn App() -> impl IntoView {
     let main_audio_elem_ref = create_node_ref::<Audio>();
     let secondary_audio_elem_ref = create_node_ref::<Audio>();
 
-    // Restore state
+    // NOTE: Restore state
     create_effect(move |_| {
         set_save_blocked.set(true);
 
@@ -134,7 +134,7 @@ pub fn App() -> impl IntoView {
         });
     });
 
-    // Save state
+    // NOTE: Save state
     create_effect(move |_| {
         if save_blocked.get() {
             return;
@@ -157,11 +157,23 @@ pub fn App() -> impl IntoView {
         });
     });
 
+    // NOTE: Stop playing grid preview when opening sound lib
+    create_effect(move |_| {
+        edit_cell_idx.track();
+        let secondary_audio_elem = secondary_audio_elem_ref
+            .get()
+            .expect("Failed to get ref to secondary audio element");
+        if !secondary_audio_elem.paused() {
+            let _ = secondary_audio_elem.pause();
+            secondary_audio_elem.set_current_time(0.0);
+        }
+    });
+
     let grid_size_handler = move |op: Operation| {
         let mut gd = grid_data.get();
         let len = gd.len();
 
-        // Don't do anything if restriction boundaries are reached
+        // NOTE: Don't do anything if restriction boundaries are reached
         if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * GRID_COLUMN_STEP
             || op == Operation::Inc && len as u16 == GRID_COLUMN_STEP * GRID_ROWS_MAX
         {
@@ -186,7 +198,7 @@ pub fn App() -> impl IntoView {
                 set_current_cell.update(move |val| {
                     let len = grid_data.get().len();
                     *val = if random_playback.get() {
-                        // Exclude possibility of duplicating random index
+                        // NOTE: Exclude possibility of duplicating random index
                         let current = thread_rng().gen_range(0..len);
                         if *val != current {
                             current
