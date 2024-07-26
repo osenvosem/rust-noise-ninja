@@ -2,12 +2,14 @@ use crate::components::{
     control_panel::ControlPanel, grid::Grid, presets::Presets, sound_library::SoundLibrary,
 };
 use crate::shared::{
-    Category, Operation, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP, GRID_ROWS_MAX,
-    GRID_ROWS_MIN, SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
+    Category, Operation, Preset, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP,
+    GRID_ROWS_MAX, GRID_ROWS_MIN, SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
 };
+use chrono::Utc;
 use html::Audio;
 use leptos::*;
 use leptos_dom::helpers::TimeoutHandle;
+use rand::distributions::{Alphanumeric, DistString};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -39,6 +41,12 @@ extern "C" {
 
     #[wasm_bindgen(method)]
     async fn keys(this: &Store) -> JsValue;
+
+    #[wasm_bindgen(method)]
+    async fn values(this: &Store) -> JsValue;
+
+    #[wasm_bindgen(method)]
+    async fn entries(this: &Store) -> JsValue;
 }
 
 #[component]
@@ -53,6 +61,7 @@ pub fn App() -> impl IntoView {
     let (random_playback, set_random_playback) = create_signal(false);
     let (save_blocked, set_save_blocked) = create_signal(false);
     let (presets_visible, set_presets_visible) = create_signal(false);
+    let (presets, set_presets) = create_signal::<Vec<Preset>>(Vec::new());
 
     let sound_lib = create_resource(
         || {},
@@ -87,7 +96,7 @@ pub fn App() -> impl IntoView {
     create_effect(move |_| {
         set_save_blocked.set(true);
 
-        let store = Store::new("foo.bin");
+        let store = Store::new("store.bin");
 
         wasm_bindgen_futures::spawn_local(async move {
             // store.clear().await;
@@ -142,17 +151,15 @@ pub fn App() -> impl IntoView {
         let l_duration = gap_duration.get().to_string();
         let l_volume = volume.get().to_string();
         let l_random = random_playback.get().to_string();
-        let l_grid_data = serde_json::to_value(grid_data.get()).unwrap();
+        let l_grid_data = serde_json::to_string(&grid_data.get()).unwrap();
 
         wasm_bindgen_futures::spawn_local(async move {
-            let store = Store::new("foo.bin");
+            let store = Store::new("store.bin");
 
             store.set("duration", l_duration.as_str()).await;
             store.set("volume", l_volume.as_str()).await;
             store.set("random_playback", l_random.as_str()).await;
-            store
-                .set("grid_data", l_grid_data.to_string().as_str())
-                .await;
+            store.set("grid_data", l_grid_data.as_str()).await;
             store.save().await;
         });
     });
@@ -167,6 +174,30 @@ pub fn App() -> impl IntoView {
             let _ = secondary_audio_elem.pause();
             secondary_audio_elem.set_current_time(0.0);
         }
+    });
+
+    create_effect(move |_| {
+        wasm_bindgen_futures::spawn_local(async move {
+            let store = Store::new("store.bin");
+
+            let keys_vec_res = serde_wasm_bindgen::from_value::<Vec<String>>(store.keys().await);
+
+            if let Ok(keys) = keys_vec_res {
+                let presets_vec_fut = keys
+                    .iter()
+                    .filter(|key| key.starts_with("preset_"))
+                    .map(|key| async {
+                        let preset_string =
+                            serde_wasm_bindgen::from_value::<String>(store.get(key).await).unwrap();
+                        serde_json::from_str::<Preset>(preset_string.as_str()).unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut stored_presets = futures::future::join_all(presets_vec_fut).await;
+                stored_presets.sort();
+                set_presets.set(stored_presets);
+            }
+        });
     });
 
     let grid_size_handler = move |op: Operation| {
@@ -278,14 +309,19 @@ pub fn App() -> impl IntoView {
                         .get()
                         .expect("Failed to get ref to secondary audio element");
 
-                    audio.set_src(&sound_url);
+                    if !audio.paused() && audio.src().contains(&sound_url) {
+                        let _ = audio.pause();
+                        audio.set_current_time(0.0);
+                    } else {
+                        audio.set_src(&sound_url);
 
-                    if let Ok(promise) = audio.play() {
-                        let reject_handler = Closure::new(move |err| {
-                            logging::error!("{:?}", err);
-                        });
-                        let _ = promise.catch(&reject_handler);
-                        reject_handler.forget();
+                        if let Ok(promise) = audio.play() {
+                            let reject_handler = Closure::new(move |err| {
+                                logging::error!("{:?}", err);
+                            });
+                            let _ = promise.catch(&reject_handler);
+                            reject_handler.forget();
+                        }
                     }
                 }
             }
@@ -315,6 +351,70 @@ pub fn App() -> impl IntoView {
         let mut mut_grid_data = grid_data.get();
         mut_grid_data[idx as usize] = None;
         set_grid_data.set(mut_grid_data);
+    };
+
+    let save_preset_handler = Callback::new(move |preset_name: String| {
+        let time = Utc::now();
+        let preset = Preset {
+            id: format!(
+                "preset_{}",
+                Alphanumeric.sample_string(&mut rand::thread_rng(), 4)
+            ),
+            name: if preset_name.is_empty() {
+                format!("Preset {}", time.format("%Y.%m.%d %H:%M"))
+            } else {
+                preset_name
+            },
+            volume: volume.get(),
+            gap_duration: gap_duration.get(),
+            random_playback: random_playback.get(),
+            grid_data: grid_data.get(),
+            created: time,
+        };
+
+        set_presets.update(|p| p.push(preset.clone()));
+
+        let store = Store::new("store.bin");
+
+        let preset_str = serde_json::to_value(&preset).unwrap();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            store.set(preset.id.as_str(), &preset_str.to_string()).await;
+        });
+    });
+
+    let delete_preset_handler = Callback::new(move |key: String| {
+        let store = Store::new("store.bin");
+        let cloned_key = key.clone();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let _ = store.delete(cloned_key.as_str()).await;
+        });
+
+        set_presets.update(|prs| {
+            *prs = prs
+                .iter()
+                .filter(|ps| ps.id != key)
+                .cloned()
+                .collect::<Vec<Preset>>();
+        });
+    });
+
+    let load_preset_handler = move |preset: Preset| {
+        let Preset {
+            gap_duration,
+            volume,
+            random_playback,
+            grid_data,
+            ..
+        } = preset;
+
+        set_gap_duration.set(gap_duration);
+        set_volume.set(volume);
+        set_random_playback.set(random_playback);
+        set_grid_data.set(grid_data);
+
+        set_presets_visible.set(false);
     };
 
     let is_cell_filled = Signal::derive(move || {
@@ -351,10 +451,14 @@ pub fn App() -> impl IntoView {
                 set_presets_visible
             />
             <Suspense fallback=move || view! { "" }>
-                <ErrorBoundary fallback=|_| {view! {<p>"Something went wrong"</p>}}>
+                <ErrorBoundary fallback=|_| {
+                    view! { <p>"Something went wrong"</p> }
+                }>
                     {move || {
-                        sound_lib.get().map(|lib| {
-                            view! {
+                        sound_lib
+                            .get()
+                            .map(|lib| {
+                                view! {
                                     <SoundLibrary
                                         sound_lib=lib
                                         edit_cell_idx
@@ -364,14 +468,19 @@ pub fn App() -> impl IntoView {
                                         close_library_handler
                                         clear_cell_handler
                                     />
-
-                            }
-
-                        })
+                                }
+                            })
                     }}
                 </ErrorBoundary>
             </Suspense>
-            <Presets presets_visible />
+            <Presets
+                presets_visible
+                set_presets_visible
+                save_preset_handler
+                presets
+                delete_preset_handler
+                load_preset_handler
+            />
             <audio _ref=main_audio_elem_ref prop:volume=volume on:ended=ended_listener></audio>
             <audio _ref=secondary_audio_elem_ref prop:volume=volume></audio>
         </div>

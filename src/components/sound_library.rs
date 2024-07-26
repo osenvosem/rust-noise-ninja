@@ -1,3 +1,4 @@
+use crate::components::button::Button;
 use crate::shared::{format_filename, Category, Sample};
 use ev::MouseEvent;
 use html::Audio;
@@ -95,28 +96,38 @@ pub fn SoundLibrary(
                         {category.get_emoji()} {category.to_string().to_uppercase()}
                     </h2>
 
-                    <div class="flex flex-wrap">{
-                        samples.iter().map(|sample| {
-                            view! {
-                                <div class="flex flex-col align-center justify-start mr-4 mb-4 cursor-pointer"
-                                    data-sample-id=format!("{}_{}", &sample.category.to_string(), &sample.filename)
-                                    data-category=category.to_string()
-                                    data-sample-filepath=&sample.filepath
-                                    on:click=sample_click_handler.clone()
-                                >
+                    <div class="flex flex-wrap">
+                        {samples
+                            .iter()
+                            .map(|sample| {
+                                view! {
                                     <div
-                                        class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none hover:border-slate-950 font-bold mb-2 pointer-events-none"
+                                        class="flex flex-col align-center justify-start mr-4 mb-4 cursor-pointer"
+                                        data-sample-id=format!(
+                                            "{}_{}",
+                                            &sample.category.to_string(),
+                                            &sample.filename,
+                                        )
+                                        data-category=category.to_string()
+                                        data-sample-filepath=&sample.filepath
+                                        on:click=sample_click_handler.clone()
                                     >
-                                        <SpeakerWave class="w-10 h-10 top-2 right-2 bottom-2 left-2 stroke-slate-400 pointer-events-none"/>
+                                        <div class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none hover:border-slate-950 font-bold mb-2 pointer-events-none">
+                                            <SpeakerWave class="w-10 h-10 top-2 right-2 bottom-2 left-2 stroke-slate-400 pointer-events-none" />
+                                        </div>
+                                        <div class="flex flex-col items-center text-xs text-slate-950 text-center pointer-events-none">
+                                            <div class="font-semibold select-none pointer-events-none">
+                                                {format_filename(&sample.filename)}
+                                            </div>
+                                            <div class="select-none pointer-events-none">
+                                                {format!("{:.2}s", &sample.duration)}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="flex flex-col items-center text-xs text-slate-950 text-center pointer-events-none">
-                                        <div class="font-semibold select-none pointer-events-none">{format_filename(&sample.filename)}</div>
-                                        <div class="select-none pointer-events-none">{format!("{:.2}s", &sample.duration)}</div>
-                                    </div>
-                                </div>
-                            }
-                        }).collect_view()
-                    }</div>
+                                }
+                            })
+                            .collect_view()}
+                    </div>
                 </div>
             }
     }).collect_view();
@@ -124,12 +135,12 @@ pub fn SoundLibrary(
     view! {
         <div
             class=container_class
-            style:display=move || {
-                if edit_cell_idx.get().is_some() { "block" } else { "none" }
-            }
+            style:display=move || { if edit_cell_idx.get().is_some() { "block" } else { "none" } }
         >
 
-            <h1 class="absolute top-2 left-2 text-sm">You are editing cell #{edit_cell_idx}</h1>
+            <h1 class="absolute top-2 left-2 text-sm select-none">
+                You are editing cell #{edit_cell_idx}
+            </h1>
             <div class="mt-12 mb-20 px-12" on:dblclick=sample_double_click_handler>
                 {render_view}
             </div>
@@ -149,29 +160,20 @@ fn ControlPanel(
     on_clear_cell: Callback<MouseEvent>,
     is_cell_filled: Signal<bool>,
 ) -> impl IntoView {
-    let container = "fixed bottom-[4%] w-screen h-[56px]";
+    let container = "fixed bottom-[2%] w-screen h-[56px]";
     let container_inner = "w-60 h-[100%] mx-auto flex items-center justify-center";
-    let button_class =
-        "border-2 bg-white shadow-lg border-slate-200 rounded-lg p-1 hover:border-slate-600 hover:shadow-md w-20 h-12 mr-4 text:slate-950 text-sm select-none";
 
     view! {
         <div class=container>
             <div class=container_inner>
-                <button
-                    class=move || {
-                        format!(
-                            "{button_class} {}",
-                            if is_cell_filled.get() { "" } else { "hidden" },
-                        )
-                    }
-
+                <Button
+                    class="mr-4"
+                    hidden=Signal::derive(move || !is_cell_filled.get())
                     on:click=on_clear_cell
                 >
                     "Clear cell"
-                </button>
-                <button class=button_class on:click=on_close>
-                    "Close"
-                </button>
+                </Button>
+                <Button on_click=on_close>"Close"</Button>
             </div>
         </div>
     }

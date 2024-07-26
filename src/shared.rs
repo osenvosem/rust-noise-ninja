@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use core::{fmt, str};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -108,10 +109,33 @@ pub fn format_filename(filename: &str) -> String {
     format!("{}{}", filename[..1].to_uppercase(), &filename[1..],).replace("_", " ")
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Preset {
-    volume: f32,
-    duration: u64,
-    random: bool,
-    grid_data: Vec<Option<Sample>>,
+    pub id: String,
+    pub name: String,
+    pub volume: f32,
+    pub gap_duration: u64,
+    pub random_playback: bool,
+    pub grid_data: Vec<Option<Sample>>,
+    pub created: DateTime<Utc>,
 }
+
+impl Ord for Preset {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.created.cmp(&other.created)
+    }
+}
+
+impl PartialOrd for Preset {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.created.cmp(&other.created))
+    }
+}
+
+impl PartialEq for Preset {
+    fn eq(&self, other: &Self) -> bool {
+        self.created == other.created
+    }
+}
+
+impl Eq for Preset {}

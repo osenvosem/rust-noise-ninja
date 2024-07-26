@@ -1,7 +1,7 @@
 use crate::shared::{Operation, GRID_ROWS_MAX, GRID_ROWS_MIN};
 use leptos::*;
 use leptos_heroicons::size_24::outline::{
-    ArrowsRightLeft, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
+    ArrowsRightLeft, Folder, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
 };
 use leptos_use::on_click_outside;
 use web_sys::{HtmlInputElement, SvgElement};
@@ -18,6 +18,7 @@ pub fn ControlPanel(
     set_volume: WriteSignal<f32>,
     random_playback: ReadSignal<bool>,
     set_random_playback: WriteSignal<bool>,
+    set_presets_visible: WriteSignal<bool>,
 ) -> impl IntoView {
     let outer_container_class = "fixed bottom-[2%] left-[2%] right-[2%]";
     let inner_container_class =
@@ -27,19 +28,19 @@ pub fn ControlPanel(
     let right_container_class = "flex flex-1 items-center justify-end pr-[2%]";
 
     view! {
-        // the wrapper fixes control panel jumping when openning volume control
         <div class=outer_container_class>
             <div class=inner_container_class>
                 <div class=left_container_class>
-                    <PlaybackGapDuration gap_duration set_gap_duration/>
-                    <GridSizeControl grid_rows_num grid_size_handler/>
+                    <PlaybackGapDuration gap_duration set_gap_duration />
+                    <GridSizeControl grid_rows_num grid_size_handler />
                 </div>
                 <div class=center_container_class>
-                    <PlayButton play set_play/>
+                    <PlayButton play set_play />
                 </div>
                 <div class=right_container_class>
-                    <RandomPlaybackButton random_playback set_random_playback/>
-                    <VolumeControl volume set_volume/>
+                    <PresetsButton set_presets_visible />
+                    <RandomPlaybackButton random_playback set_random_playback />
+                    <VolumeControl volume set_volume />
                 </div>
             </div>
         </div>
@@ -65,11 +66,11 @@ pub fn PlayButton(play: ReadSignal<bool>, set_play: WriteSignal<bool>) -> impl I
             <Show
                 when=move || { play.get() }
                 fallback=move || {
-                    view! { <PlayCircle class=icon_class/> }
+                    view! { <PlayCircle class=icon_class /> }
                 }
             >
 
-                <PauseCircle class=icon_class/>
+                <PauseCircle class=icon_class />
             </Show>
         </button>
     }
@@ -99,11 +100,21 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
     view! {
         <div class=container_class>
             <div data-icon-container on:click=move |_| set_open.update(|val| *val = !*val)>
-                <Show when=move || volume.get() != 0.0 fallback=move || { view! {<SpeakerXMark class=icon_class/>} }>
-                    <SpeakerWave class=icon_class/>
+                <Show
+                    when=move || volume.get() != 0.0
+                    fallback=move || {
+                        view! { <SpeakerXMark class=icon_class /> }
+                    }
+                >
+                    <SpeakerWave class=icon_class />
                 </Show>
             </div>
-            <div _ref=input_container_ref class=move || format!("{input_container}{}", if open.get() {""} else {" hidden"})>
+            <div
+                _ref=input_container_ref
+                class=move || {
+                    format!("{input_container}{}", if open.get() { "" } else { " hidden" })
+                }
+            >
                 <input
                     id="volume-range"
                     type="range"
@@ -323,12 +334,28 @@ fn RandomPlaybackButton(
     set_random_playback: WriteSignal<bool>,
 ) -> impl IntoView {
     view! {
-        <div class="w-6 h-6 flex mr-4 cursor-pointer"
-            on:click=move |_| { set_random_playback.update(|val| *val = !*val)}
+        <div
+            class="w-6 h-6 flex mr-4 cursor-pointer"
+            on:click=move |_| { set_random_playback.update(|val| *val = !*val) }
         >
-            <ArrowsRightLeft
-                class=move || format!("cursor-pointer{}", if random_playback.get() {" stroke-blue-500"} else {" stroke-slate-950"})
-            />
+            <ArrowsRightLeft class=move || {
+                format!(
+                    "cursor-pointer{}",
+                    if random_playback.get() { " stroke-blue-500" } else { " stroke-slate-950" },
+                )
+            } />
+        </div>
+    }
+}
+
+#[component]
+pub fn PresetsButton(set_presets_visible: WriteSignal<bool>) -> impl IntoView {
+    let container_class = "flex mr-4 cursor-pointer p-1 select-none";
+
+    view! {
+        <div class=container_class on:click=move |_| set_presets_visible.update(|val| *val = !*val)>
+            <Folder class="w-4 h-4 mr-1 stroke-slate-950 stroke-2" />
+            <span class="text-xs text-slate-950 font-medium">Presets</span>
         </div>
     }
 }
