@@ -8,7 +8,7 @@ edition = "2021"
 leptos = { version = "0.6", features = ["csr", "nightly"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-tauri-sys = { git = "https://github.com/bicarlsen/tauri-sys", branch = "v2", features = [
+tauri-sys = { git = "https://github.com/JonasKruckenberg/tauri-sys", branch = "v2", features = [
   "core",
   "event",
 ] }
@@ -36,9 +36,11 @@ leptos_heroicons = { git = "https://github.com/bbstilson/leptos_heroicons.git", 
   "24-outline-folder",
   "24-outline-trash",
   "24-outline-check-circle",
+  "24-outline-calendar-days",
+  "24-outline-clock",
 ] }
 regex = "1.10.5"
-leptos-use = "0.10.10"
+leptos-use = "0.12"
 rand = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"

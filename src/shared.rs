@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, NaiveTime, Utc, Weekday};
 use core::{fmt, str};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -139,3 +139,33 @@ impl PartialEq for Preset {
 }
 
 impl Eq for Preset {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlannedSchedule {
+    pub id: String,
+    pub start: NaiveDateTime,
+    pub end: NaiveDateTime,
+    pub preset: Preset,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecurringSchedule {
+    pub id: String,
+    pub weekdays: Vec<Weekday>,
+    pub start: NaiveTime,
+    pub end: NaiveTime,
+    pub preset: Preset,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecurringScheduleOverlap {
+    pub weekdays: Vec<Weekday>,
+    pub start: NaiveTime,
+    pub end: NaiveTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ScheduleType {
+    Planned,
+    Reccuring,
+}

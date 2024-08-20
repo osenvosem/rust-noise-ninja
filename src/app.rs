@@ -1,14 +1,19 @@
 use crate::components::{
-    control_panel::ControlPanel, grid::Grid, presets::Presets, sound_library::SoundLibrary,
+    control_panel::ControlPanel, grid::Grid, presets::Presets, schedule::Schedule,
+    sound_library::SoundLibrary,
 };
 use crate::shared::{
-    Category, Operation, Preset, Sample, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP,
-    GRID_ROWS_MAX, GRID_ROWS_MIN, SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
+    Category, Operation, PlannedSchedule, Preset, RecurringSchedule, Sample, ScheduleType,
+    DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP, GRID_ROWS_MAX, GRID_ROWS_MIN,
+    SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
 };
-use chrono::Utc;
+use chrono::{Datelike, Local, Utc};
 use html::Audio;
 use leptos::*;
 use leptos_dom::helpers::TimeoutHandle;
+use leptos_use::{
+    use_timestamp_with_controls_and_options, UseTimestampOptions, UseTimestampReturn,
+};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::{thread_rng, Rng};
 use std::collections::HashMap;
@@ -62,6 +67,13 @@ pub fn App() -> impl IntoView {
     let (save_blocked, set_save_blocked) = create_signal(false);
     let (presets_visible, set_presets_visible) = create_signal(false);
     let (presets, set_presets) = create_signal::<Vec<Preset>>(Vec::new());
+    let (scheduled_playback, set_scheduled_playback) = create_signal(false);
+    let (schedule_visible, set_schedule_visible) = create_signal(false);
+    let (planned_schedules, set_planned_schedules) =
+        create_signal::<Vec<PlannedSchedule>>(Vec::new());
+    let (recurring_schedules, set_recurring_schedules) =
+        create_signal::<Vec<RecurringSchedule>>(Vec::new());
+    let (schedule_type, set_schedule_type) = create_signal(ScheduleType::Reccuring);
 
     let sound_lib = create_resource(
         || {},
@@ -91,6 +103,31 @@ pub fn App() -> impl IntoView {
 
     let main_audio_elem_ref = create_node_ref::<Audio>();
     let secondary_audio_elem_ref = create_node_ref::<Audio>();
+
+    let UseTimestampReturn {
+        timestamp,
+        is_active,
+        pause,
+        resume,
+    } = use_timestamp_with_controls_and_options(UseTimestampOptions::default().interval(1000));
+
+    // NOTE: moved here in order to use the closure in scheduled playback effect
+    let load_preset_handler = move |preset: Preset| {
+        let Preset {
+            gap_duration,
+            volume,
+            random_playback,
+            grid_data,
+            ..
+        } = preset;
+
+        set_gap_duration.set(gap_duration);
+        set_volume.set(volume);
+        set_random_playback.set(random_playback);
+        set_grid_data.set(grid_data);
+
+        set_presets_visible.set(false);
+    };
 
     // NOTE: Restore state
     create_effect(move |_| {
@@ -127,14 +164,15 @@ pub fn App() -> impl IntoView {
                 }
             }
 
-            if let Ok(js_val_string) =
+            if let Ok(grid_data_js_val) =
                 serde_wasm_bindgen::from_value::<String>(store.get("grid_data").await)
             {
-                let grid_data = serde_json::from_str::<Vec<Option<Sample>>>(js_val_string.as_str());
+                let grid_data =
+                    serde_json::from_str::<Vec<Option<Sample>>>(grid_data_js_val.as_str());
 
                 set_grid_data.set(grid_data.unwrap());
             } else {
-                let mut grid_data_initial = vec![None; usize::from(DEFAULT_GRID_SIZE * 6)];
+                let mut grid_data_initial = vec![None; usize::from(DEFAULT_GRID_SIZE * 2)];
                 fill_grid_initial(&mut grid_data_initial);
                 set_grid_data.set(grid_data_initial);
             }
@@ -176,6 +214,7 @@ pub fn App() -> impl IntoView {
         }
     });
 
+    // NOTE: Restore presets
     create_effect(move |_| {
         wasm_bindgen_futures::spawn_local(async move {
             let store = Store::new("store.bin");
@@ -196,6 +235,130 @@ pub fn App() -> impl IntoView {
                 let mut stored_presets = futures::future::join_all(presets_vec_fut).await;
                 stored_presets.sort();
                 set_presets.set(stored_presets);
+            }
+        });
+    });
+
+    // NOTE: Play grid
+    create_effect(move |_| {
+        let main_audio_elem = main_audio_elem_ref
+            .get()
+            .expect("Failed to get ref to main audio element");
+        let secondary_audio_elem = secondary_audio_elem_ref
+            .get()
+            .expect("Failed to get ref to secondary audio element");
+
+        if play.get() {
+            let _ = secondary_audio_elem.pause();
+            secondary_audio_elem.set_current_time(0.0);
+
+            if let Some(sample_opt) = grid_data.get().get(current_cell.get()) {
+                if let Some(sample) = sample_opt {
+                    main_audio_elem.set_src(&sample.filepath);
+
+                    if let Ok(promise) = main_audio_elem.play() {
+                        let reject_handler = Closure::new(move |err| {
+                            logging::error!("{:?}", err);
+                        });
+                        let _ = promise.catch(&reject_handler);
+                        reject_handler.forget();
+                    }
+                } else {
+                    main_audio_elem.set_src(EMPTY_SOUND);
+                    if let Ok(promise) = main_audio_elem.play() {
+                        let reject_handler = Closure::new(move |err| {
+                            logging::error!("{:?}", err);
+                        });
+                        let _ = promise.catch(&reject_handler);
+                        reject_handler.forget();
+                    }
+                }
+            } else {
+                set_current_cell(0);
+            }
+        } else {
+            let _ = main_audio_elem.pause();
+            main_audio_elem.set_current_time(0.0);
+            if let Some(timeout_handle) = timeout_handler.get() {
+                timeout_handle.clear();
+                set_timeout_handler.set(None);
+            }
+        }
+    });
+
+    // NOTE: scheduled playback
+    create_effect(move |_| {
+        if scheduled_playback.get() {
+            timestamp.track();
+
+            if !is_active.get() {
+                resume();
+            };
+
+            match schedule_type.get() {
+                ScheduleType::Planned => {
+                    let current_dt = Local::now().naive_local();
+                    let schedules = planned_schedules.get();
+                    let current_schedule = schedules
+                        .iter()
+                        .find(|s| current_dt >= s.start && current_dt < s.end);
+
+                    if let Some(s) = current_schedule {
+                        if !play.get() {
+                            load_preset_handler(s.preset.clone());
+                            set_play.set(true);
+                        }
+                    } else if play.get() {
+                        set_play.set(false);
+                    }
+                }
+                ScheduleType::Reccuring => {
+                    let current_t = Local::now().time();
+                    let schedules = recurring_schedules.get();
+                    let current_schedule = schedules.iter().find(|s| {
+                        s.weekdays.contains(&Local::now().weekday())
+                            && current_t >= s.start
+                            && current_t < s.end
+                    });
+
+                    if let Some(s) = current_schedule {
+                        if !play.get() {
+                            load_preset_handler(s.preset.clone());
+                            set_play.set(true);
+                        }
+                    } else if play.get() {
+                        set_play.set(false);
+                    }
+                }
+            }
+        } else {
+            pause();
+        };
+    });
+
+    // NOTE: Restore schedules
+    create_effect(move |_| {
+        wasm_bindgen_futures::spawn_local(async move {
+            let store = Store::new("store.bin");
+
+            let planned_schedules_str_result =
+                serde_wasm_bindgen::from_value::<String>(store.get("planned_schedules").await);
+
+            if let Ok(schedules_str) = planned_schedules_str_result {
+                let stored_schedules =
+                    serde_json::from_str::<Vec<PlannedSchedule>>(&schedules_str).unwrap();
+
+                set_planned_schedules.set(stored_schedules);
+            }
+
+            let recurring_schedules_str_result =
+                serde_wasm_bindgen::from_value::<String>(store.get("recurring_schedules").await);
+
+            if let Ok(schedules_str) = recurring_schedules_str_result {
+                let stored_schedules =
+                    serde_json::from_str::<Vec<RecurringSchedule>>(&schedules_str).unwrap();
+
+                set_recurring_schedules.set(stored_schedules);
             }
         });
     });
@@ -254,52 +417,6 @@ pub fn App() -> impl IntoView {
 
         set_timeout_handler.set(handler);
     };
-
-    create_effect(move |_| {
-        let main_audio_elem = main_audio_elem_ref
-            .get()
-            .expect("Failed to get ref to main audio element");
-        let secondary_audio_elem = secondary_audio_elem_ref
-            .get()
-            .expect("Failed to get ref to secondary audio element");
-
-        if play.get() {
-            let _ = secondary_audio_elem.pause();
-            secondary_audio_elem.set_current_time(0.0);
-
-            if let Some(sample_opt) = grid_data.get().get(current_cell.get()) {
-                if let Some(sample) = sample_opt {
-                    main_audio_elem.set_src(&sample.filepath);
-
-                    if let Ok(promise) = main_audio_elem.play() {
-                        let reject_handler = Closure::new(move |err| {
-                            logging::error!("{:?}", err);
-                        });
-                        let _ = promise.catch(&reject_handler);
-                        reject_handler.forget();
-                    }
-                } else {
-                    main_audio_elem.set_src(EMPTY_SOUND);
-                    if let Ok(promise) = main_audio_elem.play() {
-                        let reject_handler = Closure::new(move |err| {
-                            logging::error!("{:?}", err);
-                        });
-                        let _ = promise.catch(&reject_handler);
-                        reject_handler.forget();
-                    }
-                }
-            } else {
-                set_current_cell(0);
-            }
-        } else {
-            let _ = main_audio_elem.pause();
-            main_audio_elem.set_current_time(0.0);
-            if let Some(timeout_handle) = timeout_handler.get() {
-                timeout_handle.clear();
-                set_timeout_handler.set(None);
-            }
-        }
-    });
 
     let grid_cell_click_handler =
         Callback::new(move |(sound_url_opt, idx): (Option<String>, u16)| {
@@ -400,28 +517,99 @@ pub fn App() -> impl IntoView {
         });
     });
 
-    let load_preset_handler = move |preset: Preset| {
-        let Preset {
-            gap_duration,
-            volume,
-            random_playback,
-            grid_data,
-            ..
-        } = preset;
+    let save_planned_schedule_handler = Callback::new(move |schedule: PlannedSchedule| {
+        set_planned_schedules.update(|s| {
+            s.push(schedule);
+        });
 
-        set_gap_duration.set(gap_duration);
-        set_volume.set(volume);
-        set_random_playback.set(random_playback);
-        set_grid_data.set(grid_data);
+        let store = Store::new("store.bin");
 
-        set_presets_visible.set(false);
-    };
+        let schedules_str = serde_json::to_value(planned_schedules.get()).unwrap();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            store
+                .set("planned_schedules", &schedules_str.to_string())
+                .await;
+        });
+    });
+
+    let delete_planned_schedule_handler = Callback::new(move |schedule_id: String| {
+        let updated = planned_schedules
+            .get()
+            .iter()
+            .filter(|s| s.id != schedule_id)
+            .cloned()
+            .collect::<Vec<PlannedSchedule>>();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let store = Store::new("store.bin");
+
+            store
+                .set(
+                    "planned_schedules",
+                    &serde_json::to_value(&updated).unwrap().to_string(),
+                )
+                .await;
+
+            set_planned_schedules.update(|s| {
+                *s = updated;
+            });
+        });
+    });
+
+    let save_recurring_schedule_handler = Callback::new(move |schedule: RecurringSchedule| {
+        set_recurring_schedules.update(|s| {
+            s.push(schedule);
+        });
+
+        let store = Store::new("store.bin");
+
+        let schedules_str = serde_json::to_value(recurring_schedules.get()).unwrap();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            store
+                .set("recurring_schedules", &schedules_str.to_string())
+                .await;
+        });
+    });
+
+    let delete_recurring_schedule_handler = Callback::new(move |schedule_id: String| {
+        let updated = recurring_schedules
+            .get()
+            .iter()
+            .filter(|s| s.id != schedule_id)
+            .cloned()
+            .collect::<Vec<RecurringSchedule>>();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            let store = Store::new("store.bin");
+
+            store
+                .set(
+                    "recurring_schedules",
+                    &serde_json::to_value(&updated).unwrap().to_string(),
+                )
+                .await;
+
+            set_recurring_schedules.update(|s| {
+                *s = updated;
+            });
+        });
+    });
 
     let is_cell_filled = Signal::derive(move || {
         if let Some(idx) = edit_cell_idx.get() {
             grid_data.get().get(idx as usize).unwrap().is_some()
         } else {
             false
+        }
+    });
+
+    let is_schedules_empty = Signal::derive(move || {
+        if schedule_type.get() == ScheduleType::Planned {
+            planned_schedules.get().is_empty()
+        } else {
+            recurring_schedules.get().is_empty()
         }
     });
 
@@ -449,6 +637,10 @@ pub fn App() -> impl IntoView {
                 random_playback
                 set_random_playback
                 set_presets_visible
+                set_schedule_visible
+                scheduled_playback
+                set_scheduled_playback
+                is_schedules_empty
             />
             <Suspense fallback=move || view! { "" }>
                 <ErrorBoundary fallback=|_| {
@@ -481,6 +673,19 @@ pub fn App() -> impl IntoView {
                 delete_preset_handler
                 load_preset_handler
             />
+            <Schedule
+                schedule_visible
+                set_schedule_visible
+                planned_schedules
+                save_planned_schedule=save_planned_schedule_handler
+                delete_planned_schedule=delete_planned_schedule_handler
+                recurring_schedules
+                save_recurring_schedule=save_recurring_schedule_handler
+                delete_recurring_schedule=delete_recurring_schedule_handler
+                schedule_type
+                set_schedule_type
+                presets
+            />
             <audio _ref=main_audio_elem_ref prop:volume=volume on:ended=ended_listener></audio>
             <audio _ref=secondary_audio_elem_ref prop:volume=volume></audio>
         </div>
@@ -496,7 +701,7 @@ fn fill_grid_initial(grid_data_initial: &mut [Option<Sample>]) {
         duration: 0.32567,
     };
 
-    let mod_idx = [0, 2, 3, 12, 23, 34];
+    let mod_idx = [0, 2, 4, 6, 8, 10];
 
     for (idx, item) in grid_data_initial.iter_mut().enumerate() {
         if mod_idx.contains(&idx) {

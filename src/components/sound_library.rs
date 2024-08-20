@@ -103,11 +103,7 @@ pub fn SoundLibrary(
                                 view! {
                                     <div
                                         class="flex flex-col align-center justify-start mr-4 mb-4 cursor-pointer"
-                                        data-sample-id=format!(
-                                            "{}_{}",
-                                            &sample.category.to_string(),
-                                            &sample.filename,
-                                        )
+                                        data-sample-id=sample.id.clone()
                                         data-category=category.to_string()
                                         data-sample-filepath=&sample.filepath
                                         on:click=sample_click_handler.clone()

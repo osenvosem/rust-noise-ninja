@@ -1,7 +1,8 @@
 use crate::shared::{Operation, GRID_ROWS_MAX, GRID_ROWS_MIN};
 use leptos::*;
 use leptos_heroicons::size_24::outline::{
-    ArrowsRightLeft, Folder, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
+    ArrowsRightLeft, CalendarDays, Clock, Folder, PauseCircle, PlayCircle, SpeakerWave,
+    SpeakerXMark,
 };
 use leptos_use::on_click_outside;
 use web_sys::{HtmlInputElement, SvgElement};
@@ -19,12 +20,16 @@ pub fn ControlPanel(
     random_playback: ReadSignal<bool>,
     set_random_playback: WriteSignal<bool>,
     set_presets_visible: WriteSignal<bool>,
+    set_schedule_visible: WriteSignal<bool>,
+    scheduled_playback: ReadSignal<bool>,
+    set_scheduled_playback: WriteSignal<bool>,
+    is_schedules_empty: Signal<bool>,
 ) -> impl IntoView {
     let outer_container_class = "fixed bottom-[2%] left-[2%] right-[2%]";
     let inner_container_class =
         "fixed bottom-[2%] left-[2%] right-[2%] flex h-[56px] bg-white/80 drop-shadow-md rounded-lg backdrop-blur-md";
     let left_container_class = "flex flex-1 items-center justify-start pl-[2%]";
-    let center_container_class = "flex flex-1 items-center justify-center";
+    let center_container_class = "flex flex-1 items-center justify-center relative";
     let right_container_class = "flex flex-1 items-center justify-end pr-[2%]";
 
     view! {
@@ -35,9 +40,16 @@ pub fn ControlPanel(
                     <GridSizeControl grid_rows_num grid_size_handler />
                 </div>
                 <div class=center_container_class>
-                    <PlayButton play set_play />
+                    <PlayButton
+                        play
+                        set_play
+                        scheduled_playback
+                        set_scheduled_playback
+                        is_schedules_empty
+                    />
                 </div>
                 <div class=right_container_class>
+                    <ScheduleButton set_schedule_visible />
                     <PresetsButton set_presets_visible />
                     <RandomPlaybackButton random_playback set_random_playback />
                     <VolumeControl volume set_volume />
@@ -48,31 +60,66 @@ pub fn ControlPanel(
 }
 
 #[component]
-pub fn PlayButton(play: ReadSignal<bool>, set_play: WriteSignal<bool>) -> impl IntoView {
-    let button_class = "w-12 h-12 rounded-full";
+pub fn PlayButton(
+    play: ReadSignal<bool>,
+    set_play: WriteSignal<bool>,
+    scheduled_playback: ReadSignal<bool>,
+    set_scheduled_playback: WriteSignal<bool>,
+    is_schedules_empty: Signal<bool>,
+) -> impl IntoView {
+    let button_class = "w-12 h-12 rounded-full relative";
     let icon_class = "stroke-slate-950 stroke-1";
 
     view! {
-        <button
-            class=button_class
-            on:click=move |_| {
-                set_play
-                    .update(|val| {
-                        *val = !*val;
-                    })
-            }
-        >
-
-            <Show
-                when=move || { play.get() }
-                fallback=move || {
-                    view! { <PlayCircle class=icon_class /> }
+        <div class="flex items-center">
+            <button
+                class=move || {
+                    format!(
+                        "{button_class} {}",
+                        if scheduled_playback.get() { "opacity-30" } else { "" },
+                    )
                 }
+                on:click=move |_| {
+                    set_play
+                        .update(|val| {
+                            *val = !*val;
+                        })
+                }
+                disabled=move || scheduled_playback.get()
             >
 
-                <PauseCircle class=icon_class />
-            </Show>
-        </button>
+                <Show
+                    when=move || { play.get() }
+                    fallback=move || {
+                        view! { <PlayCircle class=icon_class /> }
+                    }
+                >
+
+                    <PauseCircle class=icon_class />
+                </Show>
+            </button>
+            <button
+                class=move || {
+                    format!(
+                        "flex mr-4 cursor-pointer {}",
+                        if is_schedules_empty.get() { "opacity-30" } else { "" },
+                    )
+                }
+                on:click=move |_| { set_scheduled_playback.update(|val| *val = !*val) }
+                disabled=is_schedules_empty
+            >
+                <Clock class=move || {
+                    format!(
+                        "w-6 h-6 cursor-pointer{}",
+                        if scheduled_playback.get() {
+                            " stroke-blue-500"
+                        } else {
+                            " stroke-slate-950"
+                        },
+                    )
+                } />
+            </button>
+        </div>
     }
 }
 
@@ -356,6 +403,21 @@ pub fn PresetsButton(set_presets_visible: WriteSignal<bool>) -> impl IntoView {
         <div class=container_class on:click=move |_| set_presets_visible.update(|val| *val = !*val)>
             <Folder class="w-4 h-4 mr-1 stroke-slate-950 stroke-2" />
             <span class="text-xs text-slate-950 font-medium">Presets</span>
+        </div>
+    }
+}
+
+#[component]
+pub fn ScheduleButton(set_schedule_visible: WriteSignal<bool>) -> impl IntoView {
+    let container_class = "flex mr-4 cursor-pointer p-1 select-none";
+
+    view! {
+        <div
+            class=container_class
+            on:click=move |_| set_schedule_visible.update(|val| *val = !*val)
+        >
+            <CalendarDays class="w-4 h-4 mr-1 stroke-slate-950 stroke-2" />
+            <span class="text-xs text-slate-950 font-medium">Schedule</span>
         </div>
     }
 }

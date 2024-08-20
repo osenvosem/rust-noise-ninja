@@ -5,6 +5,7 @@ pub fn Button(
     #[prop(optional, into)] class: String,
     #[prop(optional, into)] on_click: Option<Callback<ev::MouseEvent>>,
     #[prop(optional, into)] hidden: Signal<bool>,
+    #[prop(optional, into)] disabled: MaybeSignal<bool>,
     children: Children,
 ) -> impl IntoView {
     let button_class =
@@ -19,8 +20,13 @@ pub fn Button(
     view! {
         <button
             class=move || {
-                format!("{button_class} {class} {}", if hidden.get() { "hidden" } else { "" })
+                format!(
+                    "{button_class} {class} {} {}",
+                    if hidden.get() { "hidden" } else { "" },
+                    if disabled.get() { "opacity-30" } else { "" },
+                )
             }
+            disabled=disabled
             on:click=click_handler
         >
             {children()}
