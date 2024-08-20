@@ -1,6 +1,6 @@
 use crate::components::{
     control_panel::ControlPanel, grid::Grid, presets::Presets, schedule::Schedule,
-    sound_library::SoundLibrary,
+    settings_menu::SettingsMenu, sound_library::SoundLibrary,
 };
 use crate::shared::{
     Category, Operation, PlannedSchedule, Preset, RecurringSchedule, Sample, ScheduleType,
@@ -615,6 +615,17 @@ pub fn App() -> impl IntoView {
 
     view! {
         <div>
+            <SettingsMenu
+                gap_duration
+                set_gap_duration
+                grid_size_handler
+                grid_rows_num=Signal::derive(move || {
+                    grid_data.get().len() as u16 / DEFAULT_GRID_SIZE
+                })
+                set_presets_visible
+                set_schedule_visible
+            />
+
             <Grid
                 grid_data
                 current_cell
@@ -625,19 +636,10 @@ pub fn App() -> impl IntoView {
             <ControlPanel
                 play
                 set_play
-                gap_duration
-                set_gap_duration
-                grid_rows_num=Signal::derive(move || {
-                    grid_data.get().len() as u16 / DEFAULT_GRID_SIZE
-                })
-
-                grid_size_handler
                 volume
                 set_volume
                 random_playback
                 set_random_playback
-                set_presets_visible
-                set_schedule_visible
                 scheduled_playback
                 set_scheduled_playback
                 is_schedules_empty

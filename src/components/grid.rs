@@ -12,7 +12,7 @@ pub fn Grid(
     #[prop(into)] open_library_handler: Callback<u16>,
     play: ReadSignal<bool>,
 ) -> impl IntoView {
-    let container_class = "p-6 grid grid-cols-6 gap-2 pb-20";
+    let container_class = "px-6 pb-20 grid grid-cols-6 gap-2 ";
     let item_class = "relative h-16 rounded shadow-sm flex justify-center items-center hover:cursor-pointer hover:border-2 hover:shadow-lg active:shadow-sm bg-white/80 backdrop-blur-md";
     let item_active_class = "border-2 border-amber-400 rounded-lg";
     let content_class = "flex flex-col items-center pointer-events-none select-none text-xs";
@@ -84,27 +84,37 @@ pub fn Grid(
                         {if let Some(sample) = elem {
                             let icon = sample.category.get_emoji();
                             let filename = format_filename(&sample.filename);
-                            let duration = format!(
-                                "{:.2}s",
-                                &sample.duration
-                            );
-
-
+                            let duration = format!("{:.2}s", &sample.duration);
                             view! {
                                 <div class=content_class>
                                     <div>{icon}</div>
                                     <div class="font-semibold">{filename}</div>
                                     <div>{duration}</div>
                                 </div>
-                                <div class=move ||{
-                                    format!(
-                                        "absolute top-0 right-0 bottom-0 left-0 w-0 bg-amber-600 h-[100%] ease-linear opacity-10{}",
-                                        if idx == current_cell.get() && play.get() { " w-[100%] transition-all" } else {" opacity-0"}
-                                    )}
-                                    style=move || { if idx == current_cell.get() && play.get() { format!("transition-duration: {:.0}ms", sample.duration * 1000.0) } else {"transition-duration: 0".to_string()}}
-                                    >
-                                </div>
-                            }.into_view()
+                                <div
+                                    class=move || {
+                                        format!(
+                                            "absolute top-0 right-0 bottom-0 left-0 w-0 bg-amber-600 h-[100%] ease-linear opacity-10{}",
+                                            if idx == current_cell.get() && play.get() {
+                                                " w-[100%] transition-all"
+                                            } else {
+                                                " opacity-0"
+                                            },
+                                        )
+                                    }
+                                    style=move || {
+                                        if idx == current_cell.get() && play.get() {
+                                            format!(
+                                                "transition-duration: {:.0}ms",
+                                                sample.duration * 1000.0,
+                                            )
+                                        } else {
+                                            "transition-duration: 0".to_string()
+                                        }
+                                    }
+                                ></div>
+                            }
+                                .into_view()
                         } else {
                             view! { "" }.into_view()
                         }}

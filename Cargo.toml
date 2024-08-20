@@ -38,6 +38,8 @@ leptos_heroicons = { git = "https://github.com/bbstilson/leptos_heroicons.git", 
   "24-outline-check-circle",
   "24-outline-calendar-days",
   "24-outline-clock",
+  "24-outline-bars-2",
+  "24-outline-x-mark",
 ] }
 regex = "1.10.5"
 leptos-use = "0.12"
