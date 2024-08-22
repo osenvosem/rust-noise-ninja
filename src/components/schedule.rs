@@ -748,7 +748,7 @@ pub fn Tabs(
 
     view! {
         <div
-            class="flex justify-center items-center mb-4 cursor-pointer"
+            class="flex justify-center items-center mb-4 cursor-pointer select-none"
             on:click=tab_click_handler
         >
             <button

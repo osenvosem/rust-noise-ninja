@@ -19,7 +19,7 @@ pub fn ControlPanel(
 ) -> impl IntoView {
     let outer_container_class = "fixed bottom-[2%] left-[2%] right-[2%]";
     let inner_container_class =
-        "fixed bottom-[2%] left-[2%] right-[2%] flex h-[56px] w-[50%] left-[50%] translate-x-[-50%] bg-white/80 drop-shadow-md rounded-full backdrop-blur-md";
+        "fixed bottom-[2%] left-[2%] right-[2%] flex h-[56px] w-[80%] sm:w-[50%] left-[50%] translate-x-[-50%] bg-white/80 drop-shadow-md rounded-full backdrop-blur-md";
     let left_container_class = "flex flex-1 items-center justify-start pl-[6%]";
     let center_container_class = "flex flex-1 items-center justify-center relative";
     let right_container_class = "flex flex-1 items-center justify-end pr-[6%]";
@@ -117,7 +117,8 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
     let icon_class = "cursor-pointer stroke-slate-950";
     let input_container =
         "absolute top-[-120px] left-[-68px] bg-white shadow rounded-full p-4 -rotate-90";
-    let input_class = "block w-32 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer";
+    let input_class =
+        "block w-32 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer volume-thumb";
 
     let (open, set_open) = create_signal(false);
 

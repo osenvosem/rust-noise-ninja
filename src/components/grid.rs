@@ -12,7 +12,7 @@ pub fn Grid(
     #[prop(into)] open_library_handler: Callback<u16>,
     play: ReadSignal<bool>,
 ) -> impl IntoView {
-    let container_class = "px-6 pb-20 grid grid-cols-6 gap-2 ";
+    let container_class = "px-6 pb-20 grid grid-cols-4 sm:grid-cols-6 gap-2";
     let item_class = "relative h-16 rounded shadow-sm flex justify-center items-center hover:cursor-pointer hover:border-2 hover:shadow-lg active:shadow-sm bg-white/80 backdrop-blur-md";
     let item_active_class = "border-2 border-amber-400 rounded-lg";
     let content_class = "flex flex-col items-center pointer-events-none select-none text-xs";

@@ -137,7 +137,7 @@ pub fn SoundLibrary(
             <h1 class="absolute top-2 left-2 text-sm select-none">
                 You are editing cell #{edit_cell_idx}
             </h1>
-            <div class="mt-12 mb-20 px-12" on:dblclick=sample_double_click_handler>
+            <div class="mt-12 mb-20 px-4 md:px-8" on:dblclick=sample_double_click_handler>
                 {render_view}
             </div>
             <ControlPanel

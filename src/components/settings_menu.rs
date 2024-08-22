@@ -2,7 +2,7 @@ use crate::shared::{Operation, GRID_ROWS_MAX, GRID_ROWS_MIN};
 use leptos::*;
 use leptos_heroicons::size_24::outline::{Bars2, CalendarDays, Folder, XMark};
 use leptos_use::on_click_outside;
-use web_sys::{HtmlDivElement, HtmlInputElement};
+use web_sys::HtmlInputElement;
 
 #[component]
 pub fn SettingsMenu(
@@ -13,13 +13,13 @@ pub fn SettingsMenu(
     set_presets_visible: WriteSignal<bool>,
     set_schedule_visible: WriteSignal<bool>,
 ) -> impl IntoView {
-    let (open, set_open) = create_signal(true);
+    let (open, set_open) = create_signal(false);
 
     let menu_ref = create_node_ref();
     let _ = on_click_outside(menu_ref, move |_| set_open.set(false));
 
     let menu_base_class =
-        "absolute -bottom-[180px] right-4 w-40 h-content rounded-lg bg-white z-10 flex flex-col items-start gap-2 px-4 py-2 cursor-default shadow";
+        "absolute -bottom-[220px] right-4 w-40 h-content rounded-lg bg-white z-10 flex flex-col items-start gap-2 px-4 py-2 cursor-default shadow";
 
     view! {
         <div class="relative flex justify-end">
@@ -45,7 +45,7 @@ pub fn SettingsMenu(
             >
                 <PlaybackGapDuration gap_duration set_gap_duration />
                 <GridSizeControl grid_rows_num grid_size_handler />
-                <div class="border-b-[1px] border-slate-200 w-full -mb-1"></div>
+                <div class="border-b-[1px] border-slate-200 w-full -mb-2"></div>
                 <PresetsButton set_presets_visible set_open />
                 <ScheduleButton set_schedule_visible set_open />
             </div>
@@ -59,6 +59,10 @@ pub fn PlaybackGapDuration(
     set_gap_duration: WriteSignal<u64>,
 ) -> impl IntoView {
     let container_class = "flex flex-col";
+    let input_container_class =
+        "relative flex items-center border-[1px] border-slate-200 rounded-full p-1";
+    let inc_dec_button_class = "flex-shrink-0 bg-slate-100 hover:bg-slate-200 inline-flex items-center justify-center border border-slate-300 rounded-full h-8 w-8 focus:ring-gray-100 focus:ring-2 focus:outline-none";
+
     let inc_dec_handler = move |op: Operation| {
         let step = 500;
         set_gap_duration.update(|v| {
@@ -95,13 +99,13 @@ pub fn PlaybackGapDuration(
             >
                 "Silent gap (sec)"
             </label>
-            <div class="relative flex items-center">
+            <div class=input_container_class>
                 <button
                     on:click=move |_| { inc_dec_handler(Operation::Dec) }
                     type="button"
                     id="decrement-button"
                     data-input-counter-decrement="counter-input"
-                    class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    class=inc_dec_button_class
                     style=("opacity", move || { if gap_duration.get() == 0 { "0.6" } else { "1" } })
                     disabled=move || { gap_duration.get() == 0 }
                 >
@@ -125,8 +129,9 @@ pub fn PlaybackGapDuration(
                     type="text"
                     id="speed-input"
                     data-input-counter
-                    class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-sm font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     placeholder=""
+                    inputmode="numeric"
                     prop:value=move || { gap_duration.get() as f64 / 1000_f64 }
                     on:input=input_handler
                 />
@@ -136,7 +141,7 @@ pub fn PlaybackGapDuration(
                     type="button"
                     id="increment-button"
                     data-input-counter-increment="counter-input"
-                    class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    class=inc_dec_button_class
                 >
                     <svg
                         class="w-2.5 h-2.5 text-slate-950 pointer-events-none"
@@ -164,15 +169,20 @@ pub fn GridSizeControl(
     grid_rows_num: Signal<u16>,
     #[prop(into)] grid_size_handler: Callback<Operation>,
 ) -> impl IntoView {
+    let container_class = "flex flex-col";
+    let input_container_class =
+        "relative flex items-center border-[1px] border-slate-200 rounded-full p-1";
+    let inc_dec_button_class = "flex-shrink-0 bg-slate-100 hover:bg-slate-200 inline-flex items-center justify-center border border-slate-300 rounded-full h-8 w-8 focus:ring-gray-100 focus:ring-2 focus:outline-none";
+
     view! {
-        <div class="flex flex-col">
+        <div class=container_class>
             <label
                 for="rows-input"
                 class="block mb-1 text-xs font-medium text-slate-950 text-left select-none"
             >
                 "Rows"
             </label>
-            <div class="relative flex items-center">
+            <div class=input_container_class>
                 <button
                     on:click=move |_| {
                         grid_size_handler(Operation::Dec);
@@ -181,7 +191,7 @@ pub fn GridSizeControl(
                     type="button"
                     id="decrement-button"
                     data-input-counter-decrement="counter-input"
-                    class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    class=inc_dec_button_class
                     style=(
                         "opacity",
                         move || { if grid_rows_num.get() == GRID_ROWS_MIN { "0.6" } else { "1" } },
@@ -209,7 +219,7 @@ pub fn GridSizeControl(
                     type="text"
                     id="rows-input"
                     data-input-counter
-                    class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-xs font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center select-none"
+                    class="flex-shrink-0 text-slate-950 border-0 bg-transparent text-sm font-normal focus:outline-none focus:ring-0 max-w-[2.5rem] text-center select-none"
                     placeholder=""
                     prop:value=grid_rows_num
                     disabled=true
@@ -223,7 +233,7 @@ pub fn GridSizeControl(
                     type="button"
                     id="increment-button"
                     data-input-counter-increment="counter-input"
-                    class="flex-shrink-0 bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 dark:border-gray-600 hover:bg-gray-200 inline-flex items-center justify-center border border-gray-300 rounded-md h-5 w-5 focus:ring-gray-100 dark:focus:ring-gray-700 focus:ring-2 focus:outline-none"
+                    class=inc_dec_button_class
                     style=(
                         "opacity",
                         move || { if grid_rows_num.get() == GRID_ROWS_MAX { "0.6" } else { "1" } },
@@ -256,7 +266,8 @@ pub fn PresetsButton(
 
     set_open: WriteSignal<bool>,
 ) -> impl IntoView {
-    let container_class = "flex cursor-pointer select-none p-2 -ml-2 hover:bg-slate-100 rounded";
+    let container_class =
+        "flex items-center cursor-pointer select-none p-2 -ml-2 hover:bg-slate-100 rounded w-full";
 
     view! {
         <button
@@ -266,8 +277,8 @@ pub fn PresetsButton(
                 set_open.set(false);
             }
         >
-            <Folder class="w-4 h-4 mr-1 stroke-slate-950 stroke-2" />
-            <span class="text-xs text-slate-950 font-medium">Presets</span>
+            <Folder class="w-5 h-5 stroke-slate-900 mr-2 stroke-2" />
+            <span class="text-sm text-slate-900 font-medium">Presets</span>
         </button>
     }
 }
@@ -278,7 +289,7 @@ pub fn ScheduleButton(
     set_open: WriteSignal<bool>,
 ) -> impl IntoView {
     let container_class =
-        "flex cursor-pointer select-none p-2 -ml-2 -mt-2 hover:bg-slate-100 rounded";
+        "flex items-center cursor-pointer select-none p-2 -ml-2 -mt-2 hover:bg-slate-100 rounded w-full";
 
     view! {
         <button
@@ -288,8 +299,8 @@ pub fn ScheduleButton(
                 set_open.set(false);
             }
         >
-            <CalendarDays class="w-4 h-4 mr-1 stroke-slate-950 stroke-2" />
-            <span class="text-xs text-slate-950 font-medium">Schedule</span>
+            <CalendarDays class="w-5 h-5 mr-2 stroke-slate-900 stroke-2" />
+            <span class="text-sm text-slate-900 font-medium">Schedule</span>
         </button>
     }
 }

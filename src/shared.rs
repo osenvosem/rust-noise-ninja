@@ -11,7 +11,6 @@ pub enum Operation {
     Inc,
     Dec,
 }
-pub const GRID_COLUMN_STEP: u16 = 6;
 pub const SOUND_LIB_PATH: &str = "/public/sounds/";
 pub const SOUND_LIB_JSON_PATH: &str = "/public/sounds/lib.json";
 pub const GRID_ROWS_MIN: u16 = 1;
@@ -168,4 +167,16 @@ pub struct RecurringScheduleOverlap {
 pub enum ScheduleType {
     Planned,
     Reccuring,
+}
+
+pub fn is_mobile() -> bool {
+    web_sys::window().unwrap().navigator().max_touch_points() > 0
+}
+
+pub fn grid_column_step() -> u16 {
+    if is_mobile() {
+        4
+    } else {
+        6
+    }
 }

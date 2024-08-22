@@ -3,8 +3,8 @@ use crate::components::{
     settings_menu::SettingsMenu, sound_library::SoundLibrary,
 };
 use crate::shared::{
-    Category, Operation, PlannedSchedule, Preset, RecurringSchedule, Sample, ScheduleType,
-    DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_COLUMN_STEP, GRID_ROWS_MAX, GRID_ROWS_MIN,
+    grid_column_step, Category, Operation, PlannedSchedule, Preset, RecurringSchedule, Sample,
+    ScheduleType, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_ROWS_MAX, GRID_ROWS_MIN,
     SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
 };
 use chrono::{Datelike, Local, Utc};
@@ -368,19 +368,19 @@ pub fn App() -> impl IntoView {
         let len = gd.len();
 
         // NOTE: Don't do anything if restriction boundaries are reached
-        if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * GRID_COLUMN_STEP
-            || op == Operation::Inc && len as u16 == GRID_COLUMN_STEP * GRID_ROWS_MAX
+        if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * grid_column_step()
+            || op == Operation::Inc && len as u16 == grid_column_step() * GRID_ROWS_MAX
         {
             return;
         }
 
         set_grid_data.set(match op {
             Operation::Dec => {
-                gd.drain(len - GRID_COLUMN_STEP as usize..);
+                gd.drain(len - grid_column_step() as usize..);
                 gd
             }
             Operation::Inc => {
-                gd.splice(len.., vec![None; GRID_COLUMN_STEP as usize]);
+                gd.splice(len.., vec![None; grid_column_step() as usize]);
                 gd
             }
         });
