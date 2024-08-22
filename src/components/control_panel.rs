@@ -115,10 +115,9 @@ pub fn PlayButton(
 pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> impl IntoView {
     let container_class = "relative flex flex-col w-6 h-6";
     let icon_class = "cursor-pointer stroke-slate-950";
-    let input_container =
-        "absolute top-[-120px] left-[-68px] bg-white shadow rounded-full p-4 -rotate-90";
+    let input_container = "absolute top-[-170px] -left-1 bg-white shadow rounded-full p-4";
     let input_class =
-        "block w-32 h-1 bg-slate-950 rounded-lg appearance-none cursor-pointer volume-thumb";
+        "w-1 h-32 bg-slate-950 rounded-lg appearance-none cursor-pointer volume-thumb volume-vertical";
 
     let (open, set_open) = create_signal(false);
 
