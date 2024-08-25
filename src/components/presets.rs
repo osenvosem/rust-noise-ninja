@@ -66,12 +66,12 @@ pub fn Presets(
                         let preset_id = preset.id.clone();
                         view! {
                             <div class="px-4 py-2 mb-2 border-2 border-slate-200 rounded-lg flex items-center cursor-pointer hover:border-slate-300">
-                                <div class="mr-2 flex-1">
-                                    <h1 class="select-none text-sm max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis font-semibold">
+                                <div class=" mr-1 sm:mr-2 flex-1">
+                                    <h1 class="select-none text-sm max-w-[80px] sm:max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis font-semibold">
                                         {preset.name.clone()}
                                     </h1>
                                 </div>
-                                <div class="mr-2 flex-1 select-none">
+                                <div class="mr-1 sm:mr-2 flex-1 select-none">
                                     <div class="text-xs select-none">
                                         <span>{filled_cells_num}/{total_cells_num}</span>
                                         " | "

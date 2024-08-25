@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tauri_hush_vibe_lib::run()
+    tauri_noise_ninja_lib::run()
 }

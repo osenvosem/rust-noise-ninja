@@ -469,6 +469,8 @@ pub fn RecurringSchedulePrompt(
         } else if target.id() == "input-end" {
             set_t_end.set(target.value());
         }
+
+        set_overlapping_error(None);
     };
 
     let on_enter_handler = move |e: KeyboardEvent| {
@@ -649,15 +651,15 @@ pub fn PlannedScheduleItem(
     view! {
         <div class="px-4 py-2 mb-2 border-2 border-slate-200 rounded-lg flex items-center cursor-pointer hover:border-slate-300 select-none">
             <div class="flex flex-col mr-4">
-                <div class="text-xs">Start</div>
+                <div class="text-xs font-semibold">Start</div>
                 <div class="text-sm">{format_datetime(&schedule.start)}</div>
             </div>
             <div class="flex flex-col mr-4">
-                <div class="text-xs">End</div>
+                <div class="text-xs font-semibold">End</div>
                 <div class="text-sm">{format_datetime(&schedule.end)}</div>
             </div>
             <div class="flex flex-col">
-                <div class="text-xs">Preset</div>
+                <div class="text-xs font-semibold">Preset</div>
                 <div class="text-sm">{schedule.preset.name}</div>
             </div>
             <div class="text-sm flex-1 flex justify-end">
@@ -695,21 +697,22 @@ pub fn RecurringScheduleItem(
 
     view! {
         <div class="px-4 py-2 mb-2 border-2 border-slate-200 rounded-lg flex items-center cursor-pointer hover:border-slate-300 select-none">
-            <div class="flex flex-col mr-4 w-[200px]">
-                <div class="text-xs">Weekdays</div>
-                <div class="text-xs flex">{weekdays_render}</div>
+            <div class="flex flex-col max-w-[80px] sm:max-w-[200px] mr-4 w-[200px]">
+                <div class="text-xs flex flex-wrap">{weekdays_render}</div>
             </div>
             <div class="flex flex-col mr-4">
-                <div class="text-xs">Start</div>
+                <div class="text-xs font-semibold">Start</div>
                 <div class="text-sm">{format_time(&schedule.start)}</div>
             </div>
             <div class="flex flex-col mr-4">
-                <div class="text-xs">End</div>
+                <div class="text-xs font-semibold">End</div>
                 <div class="text-sm">{format_time(&schedule.end)}</div>
             </div>
             <div class="flex flex-col">
-                <div class="text-xs">Preset</div>
-                <div class="text-sm">{schedule.preset.name}</div>
+                <div class="text-xs font-semibold">Preset</div>
+                <div class="text-sm max-w-[80px] sm:max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis">
+                    {schedule.preset.name}
+                </div>
             </div>
             <div class="text-sm flex-1 flex justify-end">
                 <button

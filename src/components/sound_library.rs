@@ -70,22 +70,25 @@ pub fn SoundLibrary(
         }
 
         let target_elem = event_target::<HtmlDivElement>(&e);
-        let sample_id = target_elem.get_attribute("data-sample-id").unwrap();
-        let category_str = target_elem.get_attribute("data-category").unwrap();
-        let category = Category::from_str(category_str.as_str()).unwrap();
-        let audio = audio_ref
-            .get()
-            .expect("Failed to get ref to lib audio element");
+        if let Some(sample_id) = target_elem.get_attribute("data-sample-id") {
+            if let Some(category_str) = target_elem.get_attribute("data-category") {
+                if let Ok(category) = Category::from_str(category_str.as_str()) {
+                    let audio = audio_ref
+                        .get()
+                        .expect("Failed to get ref to lib audio element");
 
-        let category_vec = local_sound_lib.get(&category).unwrap();
+                    let category_vec = local_sound_lib.get(&category).unwrap();
 
-        let sample = category_vec
-            .iter()
-            .find(|&sample| sample.id == sample_id)
-            .unwrap();
-        sample_select_handler(sample.clone());
-        let _ = audio.pause();
-        audio.set_current_time(0.0);
+                    let sample = category_vec
+                        .iter()
+                        .find(|&sample| sample.id == sample_id)
+                        .unwrap();
+                    sample_select_handler(sample.clone());
+                    let _ = audio.pause();
+                    audio.set_current_time(0.0);
+                }
+            }
+        }
     };
 
     let render_view = Category::iter().map(|category| {

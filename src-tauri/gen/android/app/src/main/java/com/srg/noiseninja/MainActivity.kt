@@ -1,3 +1,3 @@
-package com.tauri.dev
+package com.srg.noiseninja
 
 class MainActivity : TauriActivity()
