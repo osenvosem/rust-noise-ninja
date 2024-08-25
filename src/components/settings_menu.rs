@@ -12,6 +12,7 @@ pub fn SettingsMenu(
     #[prop(into)] grid_size_handler: Callback<Operation>,
     set_presets_visible: WriteSignal<bool>,
     set_schedule_visible: WriteSignal<bool>,
+    #[prop(into)] erase_grid_handler: Callback<ev::MouseEvent>,
 ) -> impl IntoView {
     let (open, set_open) = create_signal(false);
 
@@ -19,7 +20,7 @@ pub fn SettingsMenu(
     let _ = on_click_outside(menu_ref, move |_| set_open.set(false));
 
     let menu_base_class =
-        "absolute -bottom-[220px] right-4 w-40 h-content rounded-lg bg-white z-10 flex flex-col items-start gap-2 px-4 py-2 cursor-default shadow";
+        "absolute -bottom-[270px] right-4 w-40 h-content rounded-lg bg-white z-10 flex flex-col items-start gap-2 px-4 py-2 cursor-default shadow";
 
     view! {
         <div class="relative flex justify-end">
@@ -45,6 +46,7 @@ pub fn SettingsMenu(
             >
                 <PlaybackGapDuration gap_duration set_gap_duration />
                 <GridSizeControl grid_rows_num grid_size_handler />
+                <EraseGridButton erase_grid_handler set_open />
                 <div class="border-b-[1px] border-slate-200 w-full -mb-2"></div>
                 <PresetsButton set_presets_visible set_open />
                 <ScheduleButton set_schedule_visible set_open />
@@ -261,9 +263,26 @@ pub fn GridSizeControl(
 }
 
 #[component]
+pub fn EraseGridButton(
+    erase_grid_handler: Callback<ev::MouseEvent>,
+    set_open: WriteSignal<bool>,
+) -> impl IntoView {
+    view! {
+        <button
+            class="flex items-center select-none p-2 -ml-2 hover:bg-red-50 hover:text-red-500 rounded w-full text-sm text-slate-900 font-medium"
+            on:click=move |e| {
+                erase_grid_handler(e);
+                set_open(false);
+            }
+        >
+            Erase grid
+        </button>
+    }
+}
+
+#[component]
 pub fn PresetsButton(
     set_presets_visible: WriteSignal<bool>,
-
     set_open: WriteSignal<bool>,
 ) -> impl IntoView {
     let container_class =

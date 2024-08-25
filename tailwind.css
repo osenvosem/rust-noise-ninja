@@ -2,14 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-.volume-thumb::-webkit-slider-thumb {
+/* .volume-thumb::-webkit-slider-thumb {
+    appearance: none;
     -webkit-appearance: none;
     width: 24px;
     height: 24px;
-    background-color: white;
+    background-color: red;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
     border-radius: 100%;
 }
+
+.volume-track::-webkit-slider-runnable-track {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 4px;
+    background-color: #1e293b;
+} */
 
 .volume-vertical {
     writing-mode: vertical-lr;

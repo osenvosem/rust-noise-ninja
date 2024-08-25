@@ -3,9 +3,8 @@ use crate::components::{
     settings_menu::SettingsMenu, sound_library::SoundLibrary,
 };
 use crate::shared::{
-    grid_column_step, Category, Operation, PlannedSchedule, Preset, RecurringSchedule, Sample,
-    ScheduleType, DEFAULT_GRID_SIZE, EMPTY_SOUND, GRID_ROWS_MAX, GRID_ROWS_MIN,
-    SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
+    grid_row_size, Category, Operation, PlannedSchedule, Preset, RecurringSchedule, Sample,
+    ScheduleType, EMPTY_SOUND, GRID_ROWS_MAX, GRID_ROWS_MIN, SOUND_LIB_JSON_PATH, SOUND_LIB_PATH,
 };
 use chrono::{Datelike, Local, Utc};
 use html::Audio;
@@ -172,7 +171,7 @@ pub fn App() -> impl IntoView {
 
                 set_grid_data.set(grid_data.unwrap());
             } else {
-                let mut grid_data_initial = vec![None; usize::from(DEFAULT_GRID_SIZE * 2)];
+                let mut grid_data_initial = vec![None; usize::from(grid_row_size() * 2)];
                 fill_grid_initial(&mut grid_data_initial);
                 set_grid_data.set(grid_data_initial);
             }
@@ -368,19 +367,19 @@ pub fn App() -> impl IntoView {
         let len = gd.len();
 
         // NOTE: Don't do anything if restriction boundaries are reached
-        if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * grid_column_step()
-            || op == Operation::Inc && len as u16 == grid_column_step() * GRID_ROWS_MAX
+        if op == Operation::Dec && len as u16 == GRID_ROWS_MIN * grid_row_size()
+            || op == Operation::Inc && len as u16 == grid_row_size() * GRID_ROWS_MAX
         {
             return;
         }
 
         set_grid_data.set(match op {
             Operation::Dec => {
-                gd.drain(len - grid_column_step() as usize..);
+                gd.drain(len - grid_row_size() as usize..);
                 gd
             }
             Operation::Inc => {
-                gd.splice(len.., vec![None; grid_column_step() as usize]);
+                gd.splice(len.., vec![None; grid_row_size() as usize]);
                 gd
             }
         });
@@ -597,6 +596,13 @@ pub fn App() -> impl IntoView {
         });
     });
 
+    // NOTE: Erase grid
+    let erase_grid_handler = Callback::new(move |_: ev::MouseEvent| {
+        set_grid_data.update(|grid| {
+            *grid = grid.iter_mut().map(|_| None).collect();
+        });
+    });
+
     let is_cell_filled = Signal::derive(move || {
         if let Some(idx) = edit_cell_idx.get() {
             grid_data.get().get(idx as usize).unwrap().is_some()
@@ -620,10 +626,11 @@ pub fn App() -> impl IntoView {
                 set_gap_duration
                 grid_size_handler
                 grid_rows_num=Signal::derive(move || {
-                    grid_data.get().len() as u16 / DEFAULT_GRID_SIZE
+                    grid_data.get().len() as u16 / grid_row_size()
                 })
                 set_presets_visible
                 set_schedule_visible
+                erase_grid_handler
             />
 
             <Grid

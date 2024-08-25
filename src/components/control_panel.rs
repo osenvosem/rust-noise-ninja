@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_heroicons::size_24::outline::{
     ArrowsRightLeft, Clock, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
 };
-use leptos_use::on_click_outside;
+use leptos_use::{on_click_outside, use_debounce_fn_with_arg};
 use web_sys::SvgElement;
 
 #[component]
@@ -117,11 +117,18 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
     let icon_class = "cursor-pointer stroke-slate-950";
     let input_container = "absolute top-[-170px] -left-1 bg-white shadow rounded-full p-4";
     let input_class =
-        "w-1 h-32 bg-slate-950 rounded-lg appearance-none cursor-pointer volume-thumb volume-vertical";
+        "w-1 h-32 bg-slate-950 rounded-lg appearance-none cursor-pointer volume-vertical";
 
     let (open, set_open) = create_signal(false);
 
     let input_container_ref = create_node_ref();
+
+    let debounce_fn = use_debounce_fn_with_arg(
+        move |val: f32| {
+            set_volume.set(val);
+        },
+        300.0,
+    );
 
     let _ = on_click_outside(input_container_ref, move |e| {
         let target = event_target::<SvgElement>(&e);
@@ -157,8 +164,8 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
                     min=0
                     max=100
                     class=input_class
-                    on:change=move |e| {
-                        set_volume.set(event_target_value(&e).parse::<f32>().unwrap() / 100.0)
+                    on:input=move |e| {
+                        debounce_fn(event_target_value(&e).parse::<f32>().unwrap() / 100.0);
                     }
                 />
             </div>
