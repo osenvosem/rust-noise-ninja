@@ -91,6 +91,17 @@ pub fn SoundLibrary(
         }
     };
 
+    let close_library_local_handler = Callback::new(move |e: MouseEvent| {
+        let audio = audio_ref
+            .get()
+            .expect("Failed to get ref to lib audio element");
+
+        let _ = audio.pause();
+        audio.set_current_time(0.0);
+
+        close_library_handler(e);
+    });
+
     let render_view = Category::iter().map(|category| {
             let samples = sound_lib.get(&category).unwrap();
             view! {
@@ -144,7 +155,7 @@ pub fn SoundLibrary(
                 {render_view}
             </div>
             <ControlPanel
-                on_close=close_library_handler
+                on_close=close_library_local_handler
                 on_clear_cell=clear_cell_handler
                 is_cell_filled
             />
