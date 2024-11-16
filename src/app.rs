@@ -23,6 +23,12 @@ use web_sys::Response;
 
 #[wasm_bindgen]
 extern "C" {
+    #[wasm_bindgen(js_namespace = __TAURI_PLUGIN_STORE__)]
+    async fn load(filename: &str) -> Store;
+}
+
+#[wasm_bindgen]
+extern "C" {
     type Store;
 
     #[wasm_bindgen(constructor, js_namespace = __TAURI_PLUGIN_STORE__)]
@@ -132,9 +138,9 @@ pub fn App() -> impl IntoView {
     create_effect(move |_| {
         set_save_blocked.set(true);
 
-        let store = Store::new("store.bin");
-
         wasm_bindgen_futures::spawn_local(async move {
+            let store = load("store.bin").await;
+
             // store.clear().await;
             if let Ok(gap_duration_js_val) =
                 serde_wasm_bindgen::from_value::<String>(store.get("duration").await)
@@ -191,7 +197,7 @@ pub fn App() -> impl IntoView {
         let l_grid_data = serde_json::to_string(&grid_data.get()).unwrap();
 
         wasm_bindgen_futures::spawn_local(async move {
-            let store = Store::new("store.bin");
+            let store = load("store.bin").await;
 
             store.set("duration", l_duration.as_str()).await;
             store.set("volume", l_volume.as_str()).await;
@@ -216,7 +222,7 @@ pub fn App() -> impl IntoView {
     // NOTE: Restore presets
     create_effect(move |_| {
         wasm_bindgen_futures::spawn_local(async move {
-            let store = Store::new("store.bin");
+            let store = load("store.bin").await;
 
             let keys_vec_res = serde_wasm_bindgen::from_value::<Vec<String>>(store.keys().await);
 
@@ -338,7 +344,7 @@ pub fn App() -> impl IntoView {
     // NOTE: Restore schedules
     create_effect(move |_| {
         wasm_bindgen_futures::spawn_local(async move {
-            let store = Store::new("store.bin");
+            let store = load("store.bin").await;
 
             let planned_schedules_str_result =
                 serde_wasm_bindgen::from_value::<String>(store.get("planned_schedules").await);
@@ -490,20 +496,19 @@ pub fn App() -> impl IntoView {
 
         set_presets.update(|p| p.push(preset.clone()));
 
-        let store = Store::new("store.bin");
-
         let preset_str = serde_json::to_value(&preset).unwrap();
 
         wasm_bindgen_futures::spawn_local(async move {
+            let store = load("store.bin").await;
             store.set(preset.id.as_str(), &preset_str.to_string()).await;
         });
     });
 
     let delete_preset_handler = Callback::new(move |key: String| {
-        let store = Store::new("store.bin");
         let cloned_key = key.clone();
 
         wasm_bindgen_futures::spawn_local(async move {
+            let store = load("store.bin").await;
             let _ = store.delete(cloned_key.as_str()).await;
         });
 
@@ -521,11 +526,10 @@ pub fn App() -> impl IntoView {
             s.push(schedule);
         });
 
-        let store = Store::new("store.bin");
-
         let schedules_str = serde_json::to_value(planned_schedules.get()).unwrap();
 
         wasm_bindgen_futures::spawn_local(async move {
+            let store = load("store.bin").await;
             store
                 .set("planned_schedules", &schedules_str.to_string())
                 .await;
@@ -541,7 +545,7 @@ pub fn App() -> impl IntoView {
             .collect::<Vec<PlannedSchedule>>();
 
         wasm_bindgen_futures::spawn_local(async move {
-            let store = Store::new("store.bin");
+            let store = load("store.bin").await;
 
             store
                 .set(
@@ -561,11 +565,10 @@ pub fn App() -> impl IntoView {
             s.push(schedule);
         });
 
-        let store = Store::new("store.bin");
-
         let schedules_str = serde_json::to_value(recurring_schedules.get()).unwrap();
 
         wasm_bindgen_futures::spawn_local(async move {
+            let store = load("store.bin").await;
             store
                 .set("recurring_schedules", &schedules_str.to_string())
                 .await;
@@ -581,7 +584,7 @@ pub fn App() -> impl IntoView {
             .collect::<Vec<RecurringSchedule>>();
 
         wasm_bindgen_futures::spawn_local(async move {
-            let store = Store::new("store.bin");
+            let store = load("store.bin").await;
 
             store
                 .set(
