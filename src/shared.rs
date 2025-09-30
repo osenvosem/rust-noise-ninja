@@ -91,7 +91,7 @@ impl Ord for Sample {
 
 impl PartialOrd for Sample {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.filename.cmp(&other.filename))
+        Some(self.cmp(other))
     }
 }
 
@@ -126,7 +126,7 @@ impl Ord for Preset {
 
 impl PartialOrd for Preset {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.created.cmp(&other.created))
+        Some(self.cmp(other))
     }
 }
 

@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
+use crate::html::Input;
 use crate::{
     components::button::Button,
     shared::{Preset, Sample},
 };
 use chrono::Utc;
-use ev::KeyboardEvent;
-use html::Input;
-use leptos::*;
+use leptos::{prelude::*, *};
 use leptos_heroicons::size_24::outline::{ArrowsRightLeft, CheckCircle, Trash};
+use static_str_ops::static_format;
 
 #[component]
 pub fn Presets(
@@ -19,15 +19,15 @@ pub fn Presets(
     #[prop(into)] delete_preset_handler: Callback<String>,
     #[prop(into)] load_preset_handler: Callback<Preset>,
 ) -> impl IntoView {
-    let (show_prompt, set_show_prompt) = create_signal(false);
+    let (show_prompt, set_show_prompt) = signal(false);
 
     let summon_prompt = Callback::new(move |_| {
-        set_show_prompt.set(true);
+        set_show_prompt(true);
     });
 
     let save_preset_local_handler = Callback::new(move |preset_name| {
         set_show_prompt(false);
-        save_preset_handler(preset_name);
+        save_preset_handler.run(preset_name);
     });
 
     let container_class =
@@ -40,7 +40,7 @@ pub fn Presets(
     view! {
         <div
             class=container_class
-            style:display=move || { if presets_visible.get() { "block" } else { "none" } }
+            style:display=move || { if presets_visible() { "block" } else { "none" } }
         >
             <div>
                 <For
@@ -64,6 +64,9 @@ pub fn Presets(
                         category_emojis_vec.sort();
                         let category_emojis = category_emojis_vec.into_iter().collect::<String>();
                         let preset_id = preset.id.clone();
+                        let mut load_preset_handler_cloned = load_preset_handler;
+                        let mut delete_preset_handler_cloned = delete_preset_handler;
+
                         view! {
                             <div class="px-4 py-2 mb-2 border-2 border-slate-200 rounded-lg flex items-center cursor-pointer hover:border-slate-300">
                                 <div class=" mr-1 sm:mr-2 flex-1">
@@ -82,8 +85,9 @@ pub fn Presets(
                                         <span>
                                             {if preset.random_playback {
                                                 view! { <ArrowsRightLeft class="inline w-4 h-4" /> }
+                                                    .into_any()
                                             } else {
-                                                view! { "" }.into_view()
+                                                view! { "" }.into_any()
                                             }}
                                         </span>
                                     </div>
@@ -92,10 +96,10 @@ pub fn Presets(
                                     <button
                                         class=format!("{button_base_class} hover:bg-blue-50")
                                         on:click=move |_| {
-                                            load_preset_handler(preset.clone());
+                                            load_preset_handler_cloned.run(preset.clone());
                                         }
                                     >
-                                        <CheckCircle class=format!(
+                                        <CheckCircle class=static_format!(
                                             "{button_base_icon_class} group-hover:stroke-blue-600",
                                         ) />
                                         <span class=format!(
@@ -105,10 +109,10 @@ pub fn Presets(
                                     <button
                                         class=format!("{button_base_class} hover:bg-red-50")
                                         on:click=move |_| {
-                                            delete_preset_handler(preset_id.clone());
+                                            delete_preset_handler_cloned.run(preset_id.clone());
                                         }
                                     >
-                                        <Trash class=format!(
+                                        <Trash class=static_format!(
                                             "{button_base_icon_class} group-hover:stroke-red-600",
                                         ) />
                                         <span class=format!(
@@ -144,7 +148,7 @@ pub fn ControlPanel(
     view! {
         <div class=container>
             <div class=container_inner>
-                <Button class="mr-4" on:click=save_preset_handler>
+                <Button class="mr-4" on_click=save_preset_handler>
                     Save preset
                 </Button>
                 <Button on:click=move |_| {
@@ -157,28 +161,26 @@ pub fn ControlPanel(
 
 #[component]
 pub fn Prompt(title: String, on_click: Callback<String>, show: ReadSignal<bool>) -> impl IntoView {
-    let input_ref = create_node_ref::<Input>();
+    let input_ref: NodeRef<Input> = NodeRef::new();
 
     let backdrop = "fixed top-0 right-0 bottom-0 left-0 bg-slate-200/20 backdrop-blur";
     let prompt_container =
         "absolute flex flex-col justify-center items-center mx-auto top-[30%] right-0 left-0 w-fit h-40 bg-white rounded-lg shadow-lg px-8 py-2";
 
-    create_effect(move |_| {
-        if show.get() {
+    Effect::new(move |_| {
+        if show() {
             if let Some(input_ref) = input_ref.get() {
-                let _ = input_ref.on_mount(|elem| {
-                    elem.focus().unwrap();
-                });
-            };
+                input_ref.focus().unwrap();
+            }
         }
     });
 
-    let on_enter_press = move |e: KeyboardEvent| {
+    let on_enter_press = move |e: ev::KeyboardEvent| {
         if e.key() == "Enter" {
             let input = input_ref.get().unwrap();
             let val = input.value();
             input.set_value("");
-            on_click(val);
+            on_click.run(val);
         }
     };
 
@@ -186,7 +188,7 @@ pub fn Prompt(title: String, on_click: Callback<String>, show: ReadSignal<bool>)
         let input = input_ref.get().unwrap();
         let val = input.value();
         input.set_value("");
-        on_click(val);
+        on_click.run(val);
     };
 
     view! {
@@ -196,7 +198,7 @@ pub fn Prompt(title: String, on_click: Callback<String>, show: ReadSignal<bool>)
                 <input
                     class="p-2 border-2 rounded-lg mb-6"
                     on:keydown=on_enter_press
-                    _ref=input_ref
+                    node_ref=input_ref
                     placeholder=format!("Preset {}", Utc::now().format("%Y.%m.%d %H:%M"))
                     maxlength=40
                 />

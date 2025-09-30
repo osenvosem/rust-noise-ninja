@@ -5,8 +5,9 @@ use crate::{components::button::Button, shared::Preset};
 use chrono::{Duration, Local, NaiveDateTime, NaiveTime, Weekday};
 use ev::{KeyboardEvent, MouseEvent};
 use html::{Div, Input, Select};
-use leptos::*;
+use leptos::{prelude::*, *};
 use leptos_heroicons::size_24::outline::Trash;
+use static_str_ops::static_format;
 use web_sys::{HtmlButtonElement, HtmlInputElement};
 
 #[component]
@@ -23,8 +24,8 @@ pub fn Schedule(
     set_schedule_type: WriteSignal<ScheduleType>,
     presets: ReadSignal<Vec<Preset>>,
 ) -> impl IntoView {
-    let (show_planned_schedule_prompt, set_show_planned_schedule_prompt) = create_signal(false);
-    let (show_recurring_schedule_prompt, set_show_recurring_schedule_prompt) = create_signal(false);
+    let (show_planned_schedule_prompt, set_show_planned_schedule_prompt) = signal(false);
+    let (show_recurring_schedule_prompt, set_show_recurring_schedule_prompt) = signal(false);
 
     let summon_prompt = Callback::new(move |_| {
         if schedule_type.get() == ScheduleType::Planned {
@@ -37,13 +38,13 @@ pub fn Schedule(
     let save_planned_schedule_local_handler =
         Callback::new(move |planned_schedule: PlannedSchedule| {
             set_show_planned_schedule_prompt.set(false);
-            save_planned_schedule(planned_schedule);
+            save_planned_schedule.run(planned_schedule);
         });
 
     let save_recurring_schedule_local_handler =
         Callback::new(move |recurring_schedule: RecurringSchedule| {
             set_show_recurring_schedule_prompt.set(false);
-            save_recurring_schedule(recurring_schedule);
+            save_recurring_schedule.run(recurring_schedule);
         });
 
     let container_class =
@@ -119,7 +120,7 @@ pub fn ControlPanel(
     view! {
         <div class=container>
             <div class=container_inner>
-                <Button class="mr-4" on:click=add_period>
+                <Button class="mr-4" on:click=move |e| add_period.run(e)>
                     Add period
                 </Button>
                 <Button on:click=move |_| {
@@ -143,9 +144,9 @@ pub fn PlannedSchedulePrompt(
     let prompt_container =
         "absolute flex flex-col justify-center items-center mx-auto top-[20%] right-0 left-0 w-80 bg-white rounded-lg shadow-lg px-6 py-2";
 
-    let start_input_ref = create_node_ref::<Input>();
-    let end_input_ref = create_node_ref::<Input>();
-    let preset_input_ref = create_node_ref::<Select>();
+    let start_input_ref: NodeRef<Input> = NodeRef::new();
+    let end_input_ref: NodeRef<Input> = NodeRef::new();
+    let preset_input_ref: NodeRef<Select> = NodeRef::new();
 
     let datetime_format = "%Y-%m-%dT%H:%M";
 
@@ -160,8 +161,8 @@ pub fn PlannedSchedulePrompt(
         }
     };
 
-    let (dt_start, set_dt_start) = create_signal(dt_start_min.clone());
-    let (dt_end, set_dt_end) = create_signal(String::new());
+    let (dt_start, set_dt_start) = signal(dt_start_min.clone());
+    let (dt_end, set_dt_end) = signal(String::new());
 
     let dt_end_min = move || {
         (NaiveDateTime::parse_from_str(dt_start.get().as_str(), datetime_format).unwrap()
@@ -172,11 +173,11 @@ pub fn PlannedSchedulePrompt(
 
     let should_be_disabled = Signal::derive(move || presets.get().is_empty());
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         set_dt_end.set(dt_end_min());
     });
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         let start =
             NaiveDateTime::parse_from_str(dt_start.get().as_str(), datetime_format).unwrap();
         let end = NaiveDateTime::parse_from_str(dt_end.get().as_str(), datetime_format).unwrap();
@@ -208,7 +209,7 @@ pub fn PlannedSchedulePrompt(
             preset,
         };
 
-        on_click(schedule);
+        on_click.run(schedule);
     };
 
     let click_cancel_button_handler = move |_: MouseEvent| {
@@ -254,7 +255,7 @@ pub fn PlannedSchedulePrompt(
                         min=dt_start_min
                         prop:value=dt_start
                         class="p-1 border-2 rounded-lg mb-1 w-full"
-                        _ref=start_input_ref
+                        node_ref=start_input_ref
                         on:blur=on_blur_dt_start_handler
                         on:keydown=on_enter_handler
                     />
@@ -269,7 +270,7 @@ pub fn PlannedSchedulePrompt(
                         min=dt_end_min
                         prop:value=dt_end
                         class="p-1 border-2 rounded-lg mb-1 w-full"
-                        _ref=end_input_ref
+                        node_ref=end_input_ref
                         on:blur=on_blur_dt_end_handler
                         on:keydown=on_enter_handler
                     />
@@ -282,7 +283,7 @@ pub fn PlannedSchedulePrompt(
                         <select
                             id="input-end"
                             class="block relative appearance-none p-1 border-2 rounded-lg mb-1 w-full "
-                            _ref=preset_input_ref
+                            node_ref=preset_input_ref
                             disabled=should_be_disabled
                         >
                             {move || {
@@ -290,7 +291,9 @@ pub fn PlannedSchedulePrompt(
                                     .get()
                                     .iter()
                                     .map(|p| {
-                                        view! { <option value=&p.id>{&p.name}</option> }
+                                        view! {
+                                            <option value=p.id.clone()>{p.name.clone()}</option>
+                                        }
                                     })
                                     .collect_view()
                             }}
@@ -345,17 +348,17 @@ pub fn RecurringSchedulePrompt(
         Weekday::Sun,
     ];
 
-    let weekdays_elem_ref = create_node_ref::<Div>();
-    let start_input_ref = create_node_ref::<Input>();
-    let end_input_ref = create_node_ref::<Input>();
-    let preset_input_ref = create_node_ref::<Select>();
-    let container_ref = create_node_ref::<Div>();
+    let weekdays_elem_ref: NodeRef<Div> = NodeRef::new();
+    let start_input_ref: NodeRef<Input> = NodeRef::new();
+    let end_input_ref: NodeRef<Input> = NodeRef::new();
+    let preset_input_ref: NodeRef<Select> = NodeRef::new();
+    let container_ref: NodeRef<Div> = NodeRef::new();
 
-    let (t_start, set_t_start) = create_signal(String::from("12:00"));
-    let (t_end, set_t_end) = create_signal(String::from("12:01"));
-    let (weekdays, set_weekdays) = create_signal::<Vec<Weekday>>(weekdays_default);
+    let (t_start, set_t_start) = signal(String::from("12:00"));
+    let (t_end, set_t_end) = signal(String::from("12:01"));
+    let (weekdays, set_weekdays) = signal::<Vec<Weekday>>(weekdays_default);
     let (overlapping_error, set_overlapping_error) =
-        create_signal::<Option<Vec<RecurringScheduleOverlap>>>(None);
+        signal::<Option<Vec<RecurringScheduleOverlap>>>(None);
 
     let should_be_disabled =
         Signal::derive(move || presets.get().is_empty() || overlapping_error.get().is_some());
@@ -369,15 +372,15 @@ pub fn RecurringSchedulePrompt(
     };
 
     // NOTE: this hack allows for avoiding visual gap in modal window in Safari
-    create_effect(move |_| {
+    Effect::new(move |_| {
         if overlapping_error.get().is_some() {
             let elem = container_ref.get().unwrap();
             let height = elem.offset_height();
-            let _ = elem.style("height", format!("{}px", height + 1));
+            let _ = elem.style(format!("height: {}px", height + 1));
         };
     });
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         let mut start = t_start.get();
         start.push_str(":00");
         let mut end = t_end.get();
@@ -451,7 +454,7 @@ pub fn RecurringSchedulePrompt(
 
             set_overlapping_error.set(None);
 
-            on_click(schedule);
+            on_click.run(schedule);
         } else {
             set_overlapping_error.set(Some(conflicting_periods));
         }
@@ -518,13 +521,13 @@ pub fn RecurringSchedulePrompt(
 
     view! {
         <div class=move || { format!("{backdrop}{}", if show.get() { "" } else { " hidden" }) }>
-            <div class=prompt_container _ref=container_ref>
+            <div class=prompt_container node_ref=container_ref>
                 <h1 class="text-center m-0 mb-4 text-sm font-semibold">{title}</h1>
                 <fieldset class="flex justify-center mb-2 w-full">
                     <div
                         class="flex mr-1 bg-slate-50 rounded-full"
                         on:click=weekday_button_handler
-                        _ref=weekdays_elem_ref
+                        node_ref=weekdays_elem_ref
                     >
                         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                             .iter()
@@ -549,7 +552,7 @@ pub fn RecurringSchedulePrompt(
                         prop:value=t_start
                         on:keydown=on_enter_handler
                         on:blur=on_blur_handler
-                        _ref=start_input_ref
+                        node_ref=start_input_ref
                     />
                 </fieldset>
                 <fieldset class="flex flex-col mb-2 w-full">
@@ -564,7 +567,7 @@ pub fn RecurringSchedulePrompt(
                         prop:value=t_end
                         on:blur=on_blur_handler
                         on:keydown=on_enter_handler
-                        _ref=end_input_ref
+                        node_ref=end_input_ref
                     />
                 </fieldset>
                 <fieldset class="flex flex-col w-full">
@@ -575,7 +578,7 @@ pub fn RecurringSchedulePrompt(
                         <select
                             id="input-end"
                             class="block relative appearance-none p-1 border-2 rounded-lg mb-1 w-full "
-                            _ref=preset_input_ref
+                            node_ref=preset_input_ref
                             disabled=should_be_disabled
                         >
                             {move || {
@@ -583,7 +586,9 @@ pub fn RecurringSchedulePrompt(
                                     .get()
                                     .iter()
                                     .map(|p| {
-                                        view! { <option value=&p.id>{&p.name}</option> }
+                                        view! {
+                                            <option value=p.id.clone()>{p.name.clone()}</option>
+                                        }
                                     })
                                     .collect_view()
                             }}
@@ -666,10 +671,12 @@ pub fn PlannedScheduleItem(
                 <button
                     class=format!("{button_base_class} hover:bg-red-50")
                     on:click=move |_| {
-                        delete_schedule(schedule.id.clone());
+                        delete_schedule.run(schedule.id.clone());
                     }
                 >
-                    <Trash class=format!("{button_base_icon_class} group-hover:stroke-red-600") />
+                    <Trash class=static_format!(
+                        "{button_base_icon_class} group-hover:stroke-red-600"
+                    ) />
                     <span class=format!(
                         "{button_base_text_class} group-hover:text-red-600",
                     )>Delete</span>
@@ -688,10 +695,10 @@ pub fn RecurringScheduleItem(
     let button_base_icon_class = "w-4 h-4 mr-1 stroke-slate-950 stroke-2 select-none";
     let button_base_text_class = "text-xs text-slate-950 font-medium select-none";
 
-    let weekdays_render = weekdays_to_sorted_vec(schedule.weekdays)
+    let weekdays_render = weekdays_to_sorted_vec(schedule.weekdays.clone())
         .iter()
         .map(|wd| {
-            view! { <div class="mr-1 px-1 border-2 border-slate-200 rounded">{wd}</div> }
+            view! { <div class="mr-1 px-1 border-2 border-slate-200 rounded">{wd.clone()}</div> }
         })
         .collect_view();
 
@@ -718,10 +725,12 @@ pub fn RecurringScheduleItem(
                 <button
                     class=format!("{button_base_class} hover:bg-red-50")
                     on:click=move |_| {
-                        delete_schedule(schedule.id.clone());
+                        delete_schedule.run(schedule.id.clone());
                     }
                 >
-                    <Trash class=format!("{button_base_icon_class} group-hover:stroke-red-600") />
+                    <Trash class=static_format!(
+                        "{button_base_icon_class} group-hover:stroke-red-600"
+                    ) />
                     <span class=format!(
                         "{button_base_text_class} group-hover:text-red-600",
                     )>Delete</span>

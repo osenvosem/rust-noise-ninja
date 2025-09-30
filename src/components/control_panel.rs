@@ -1,8 +1,9 @@
-use leptos::*;
+use leptos::prelude::*;
 use leptos_heroicons::size_24::outline::{
     ArrowsRightLeft, Clock, PauseCircle, PlayCircle, SpeakerWave, SpeakerXMark,
 };
 use leptos_use::{on_click_outside, use_debounce_fn_with_arg};
+use static_str_ops::static_format;
 use web_sys::SvgElement;
 
 #[component]
@@ -96,8 +97,7 @@ pub fn PlayButton(
                 on:click=move |_| { set_scheduled_playback.update(|val| *val = !*val) }
                 disabled=is_schedules_empty
             >
-                <Clock class=move || {
-                    format!(
+                <Clock class=static_format!(
                         "w-6 h-6 cursor-pointer{}",
                         if scheduled_playback.get() {
                             " stroke-blue-500"
@@ -105,7 +105,7 @@ pub fn PlayButton(
                             " stroke-slate-950"
                         },
                     )
-                } />
+                />
             </button>
         </div>
     }
@@ -119,9 +119,9 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
     let input_class =
         "w-1 h-32 bg-slate-950 rounded-lg appearance-none cursor-pointer volume-vertical";
 
-    let (open, set_open) = create_signal(false);
+    let (open, set_open) = signal(false);
 
-    let input_container_ref = create_node_ref();
+    let input_container_ref = NodeRef::new();
 
     let debounce_fn = use_debounce_fn_with_arg(
         move |val: f32| {
@@ -152,7 +152,7 @@ pub fn VolumeControl(volume: ReadSignal<f32>, set_volume: WriteSignal<f32>) -> i
                 </Show>
             </div>
             <div
-                _ref=input_container_ref
+                node_ref=input_container_ref
                 class=move || {
                     format!("{input_container}{}", if open.get() { "" } else { " hidden" })
                 }
@@ -183,12 +183,11 @@ fn RandomPlaybackButton(
             class="w-6 h-6 flex mr-4 cursor-pointer"
             on:click=move |_| { set_random_playback.update(|val| *val = !*val) }
         >
-            <ArrowsRightLeft class=move || {
-                format!(
+            <ArrowsRightLeft class=static_format!(
                     "cursor-pointer{}",
                     if random_playback.get() { " stroke-blue-500" } else { " stroke-slate-950" },
                 )
-            } />
+            />
         </div>
     }
 }

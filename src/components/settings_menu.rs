@@ -1,5 +1,5 @@
 use crate::shared::{Operation, GRID_ROWS_MAX, GRID_ROWS_MIN};
-use leptos::*;
+use leptos::{prelude::*, *};
 use leptos_heroicons::size_24::outline::{Bars2, CalendarDays, Folder, XMark};
 use leptos_use::on_click_outside;
 use web_sys::HtmlInputElement;
@@ -14,9 +14,9 @@ pub fn SettingsMenu(
     set_schedule_visible: WriteSignal<bool>,
     #[prop(into)] erase_grid_handler: Callback<ev::MouseEvent>,
 ) -> impl IntoView {
-    let (open, set_open) = create_signal(false);
+    let (open, set_open) = signal(false);
 
-    let menu_ref = create_node_ref();
+    let menu_ref = NodeRef::new();
     let _ = on_click_outside(menu_ref, move |_| set_open.set(false));
 
     let menu_base_class =
@@ -42,7 +42,7 @@ pub fn SettingsMenu(
                 class=move || {
                     format!("{menu_base_class} {}", if open.get() { "" } else { "hidden" })
                 }
-                _ref=menu_ref
+                node_ref=menu_ref
             >
                 <PlaybackGapDuration gap_duration set_gap_duration />
                 <GridSizeControl grid_rows_num grid_size_handler />
@@ -187,7 +187,7 @@ pub fn GridSizeControl(
             <div class=input_container_class>
                 <button
                     on:click=move |_| {
-                        grid_size_handler(Operation::Dec);
+                        grid_size_handler.run(Operation::Dec);
                     }
 
                     type="button"
@@ -229,7 +229,7 @@ pub fn GridSizeControl(
 
                 <button
                     on:click=move |_| {
-                        grid_size_handler(Operation::Inc);
+                        grid_size_handler.run(Operation::Inc);
                     }
 
                     type="button"
@@ -271,7 +271,7 @@ pub fn EraseGridButton(
         <button
             class="flex items-center select-none p-2 -ml-2 hover:bg-red-50 hover:text-red-500 rounded w-full text-sm text-slate-900 font-medium"
             on:click=move |e| {
-                erase_grid_handler(e);
+                erase_grid_handler.run(e);
                 set_open(false);
             }
         >

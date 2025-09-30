@@ -2,7 +2,7 @@ use crate::components::button::Button;
 use crate::shared::{format_filename, Category, Sample};
 use ev::MouseEvent;
 use html::Audio;
-use leptos::*;
+use leptos::{prelude::*, *};
 use leptos_heroicons::size_24::outline::SpeakerWave;
 use leptos_use::{use_timeout_fn, UseTimeoutFnReturn};
 use std::collections::HashMap;
@@ -23,7 +23,7 @@ pub fn SoundLibrary(
     let local_sound_lib = sound_lib.clone();
     let container_class =
         "absolute top-0 right-0 bottom-auto left-0 min-h-screen w-screen bg-white ";
-    let audio_ref = create_node_ref::<Audio>();
+    let audio_ref: NodeRef<Audio> = NodeRef::new();
 
     let UseTimeoutFnReturn {
         start,
@@ -83,7 +83,7 @@ pub fn SoundLibrary(
                         .iter()
                         .find(|&sample| sample.id == sample_id)
                         .unwrap();
-                    sample_select_handler(sample.clone());
+                    sample_select_handler.run(sample.clone());
                     let _ = audio.pause();
                     audio.set_current_time(0.0);
                 }
@@ -99,10 +99,10 @@ pub fn SoundLibrary(
         let _ = audio.pause();
         audio.set_current_time(0.0);
 
-        close_library_handler(e);
+        close_library_handler.run(e);
     });
 
-    let render_view = Category::iter().map(|category| {
+    let render_view = Category::iter().map(move |category| {
             let samples = sound_lib.get(&category).unwrap();
             view! {
                 <div class="mb-2">
@@ -119,7 +119,7 @@ pub fn SoundLibrary(
                                         class="flex flex-col align-center justify-start mr-4 mb-4 cursor-pointer"
                                         data-sample-id=sample.id.clone()
                                         data-category=category.to_string()
-                                        data-sample-filepath=&sample.filepath
+                                        data-sample-filepath=sample.filepath.clone()
                                         on:click=sample_click_handler.clone()
                                     >
                                         <div class="relative w-16 h-16 border-2 border-slate-400 rounded-full flex items-center justify-center select-none hover:border-slate-950 font-bold mb-2 pointer-events-none">
@@ -127,10 +127,10 @@ pub fn SoundLibrary(
                                         </div>
                                         <div class="flex flex-col items-center text-xs text-slate-950 text-center pointer-events-none">
                                             <div class="font-semibold select-none pointer-events-none">
-                                                {format_filename(&sample.filename)}
+                                                {format_filename(&sample.filename.clone())}
                                             </div>
                                             <div class="select-none pointer-events-none">
-                                                {format!("{:.2}s", &sample.duration)}
+                                                {format!("{:.2}s", sample.duration.clone())}
                                             </div>
                                         </div>
                                     </div>
@@ -159,7 +159,7 @@ pub fn SoundLibrary(
                 on_clear_cell=clear_cell_handler
                 is_cell_filled
             />
-            <audio _ref=audio_ref prop:volume=volume></audio>
+            <audio node_ref=audio_ref prop:volume=volume></audio>
         </div>
     }
 }
@@ -179,7 +179,7 @@ fn ControlPanel(
                 <Button
                     class="mr-4"
                     hidden=Signal::derive(move || !is_cell_filled.get())
-                    on:click=on_clear_cell
+                    on:click=move |e| on_clear_cell.run(e)
                 >
                     "Clear cell"
                 </Button>

@@ -19,7 +19,7 @@ Rust Noise Ninja provides a visual grid interface where users can arrange differ
 2. **Sound Library**: Categorized audio files organized by type (boom, construction, doors, eerie, people)
 3. **Scheduling**: Ability to set when noise patterns should play automatically
 4. **Preset System**: Save and recall favorite combinations of sounds
-5. **Settings**: Customize playback volume, mixing, and other audio parameters
+5. **Settings Menu**: Customize playback volume, mixing, and other audio parameters
 
 ## User Experience Goals
 
