@@ -1,0 +1,1 @@
+Building a Tauri 2.0 (for cross-platform applications) and Leptos (for frontend) app that is intended for use with vibro-speakers to legally confront noisy neighbors. The application must work on every major OS: Linux, Windows, MacOS, and Android. It must have a sound library, sound presets, and the ability to schedule work in both absolute and relative time.
